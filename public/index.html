@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Video Content Studio 🎬</title>
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Background decorative glowing orbs -->
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+  <div class="glow-orb orb-3"></div>
+
+  <div class="app-container">
+    
+    <!-- Sidebar / Control Panel -->
+    <aside class="sidebar glass">
+      <div class="brand">
+        <span class="icon">🎬</span>
+        <h1>AI Video Studio</h1>
+        <span class="badge">v1.0 Local</span>
+      </div>
+
+      <!-- Section: Projects -->
+      <section class="panel-section">
+        <h3>My Projects</h3>
+        <div class="project-selector-group">
+          <select id="project-selector" class="input-field">
+            <option value="">-- Select Project --</option>
+          </select>
+          <button id="btn-new-project" class="btn btn-secondary">+ New</button>
+        </div>
+      </section>
+
+      <!-- Section: Active Project Settings -->
+      <section class="panel-section project-settings-panel disabled" id="project-settings-sec">
+        <h3>Project Configuration</h3>
+        <div class="form-group">
+          <label for="project-title-input">Project Title</label>
+          <input type="text" id="project-title-input" class="input-field" placeholder="My Awesome Short">
+        </div>
+        <div class="form-group">
+          <label>Aspect Ratio</label>
+          <div class="radio-toggle-group">
+            <input type="radio" id="ratio-shorts" name="aspect-ratio" value="9:16" checked>
+            <label for="ratio-shorts">📱 Shorts (9:16)</label>
+            <input type="radio" id="ratio-wide" name="aspect-ratio" value="16:9">
+            <label for="ratio-wide">💻 YouTube (16:9)</label>
+          </div>
+        </div>
+        <button id="btn-save-project-settings" class="btn btn-primary btn-sm">Update Settings</button>
+      </section>
+
+      <!-- Section: Cloud Generation Settings -->
+      <section class="panel-section">
+        <h3>Cloud AI Provider</h3>
+        
+        <div class="form-group">
+          <label for="provider-select">Video Provider</label>
+          <select id="provider-select" class="input-field">
+            <option value="comfyui">ComfyUI (Google Colab Free GPU)</option>
+            <option value="fal">Fal.ai API (Hunyuan/CogVideoX)</option>
+            <option value="replicate">Replicate API (SVD/Hunyuan)</option>
+          </select>
+        </div>
+
+        <!-- ComfyUI Fields -->
+        <div class="provider-fields" id="fields-comfyui">
+          <div class="form-group">
+            <label for="comfy-url-input">ComfyUI Colab Tunnel URL</label>
+            <input type="text" id="comfy-url-input" class="input-field" placeholder="https://xxxx.pinggy.link">
+            <small class="help-text">Obtain this from running your Google Colab setup.</small>
+          </div>
+        </div>
+
+        <!-- Fal.ai Fields -->
+        <div class="provider-fields hidden" id="fields-fal">
+          <div class="form-group">
+            <label for="fal-key-input">Fal.ai API Key</label>
+            <input type="password" id="fal-key-input" class="input-field" placeholder="fal_...">
+          </div>
+          <div class="form-group">
+            <label for="fal-model-select">Fal Video Model</label>
+            <select id="fal-model-select" class="input-field">
+              <option value="fal-ai/hunyuan-video">Hunyuan Video (Highly Realistic)</option>
+              <option value="fal-ai/cogvideox-5b">CogVideoX-5B</option>
+              <option value="fal-ai/ltx-video">LTX Video (Fast)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Replicate Fields -->
+        <div class="provider-fields hidden" id="fields-replicate">
+          <div class="form-group">
+            <label for="replicate-key-input">Replicate API Key</label>
+            <input type="password" id="replicate-key-input" class="input-field" placeholder="r8_...">
+          </div>
+          <div class="form-group">
+            <label for="replicate-model-input">Replicate Model Config</label>
+            <input type="text" id="replicate-model-input" class="input-field" value="lucataco/hunyuan-video:855f4124" placeholder="owner/model:version_hash">
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Global Audio Settings -->
+      <section class="panel-section">
+        <h3>Audio & Voice</h3>
+        <div class="form-group">
+          <label for="voice-select">Narrator Voice (Edge TTS)</label>
+          <select id="voice-select" class="input-field">
+            <!-- Dynamically populated -->
+            <option value="en-US-GuyNeural">Guy (Male US)</option>
+            <option value="en-US-JennyNeural">Jenny (Female US)</option>
+            <option value="en-GB-SoniaNeural">Sonia (Female UK)</option>
+            <option value="en-GB-RyanNeural">Ryan (Male UK)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="bg-music-input">Background Music File Name</label>
+          <input type="text" id="bg-music-input" class="input-field" placeholder="e.g. cinematic.mp3">
+          <small class="help-text">Place the audio file in the project's assets folder.</small>
+        </div>
+        <div class="form-group">
+          <label for="bg-volume-input">Music Volume (0.0 - 1.0)</label>
+          <input type="number" id="bg-volume-input" class="input-field" min="0" max="1" step="0.01" value="0.08">
+        </div>
+      </section>
+    </aside>
+
+    <!-- Main Workspace Content -->
+    <main class="main-content">
+      
+      <!-- Script Editor & Project Loading -->
+      <section class="card glass hero-card" id="no-project-selected-view">
+        <div class="hero-content">
+          <span class="big-icon">🎬</span>
+          <h2>Welcome to AI Video Content Studio</h2>
+          <p>Create high-quality, unique Shorts and YouTube videos by splitting scripts, rendering voiceovers, generating cloud AI video clips, and stitching it all together automatically.</p>
+          <button id="btn-create-first" class="btn btn-primary">Create Your First Project</button>
+        </div>
+      </section>
+
+      <div class="workspace-views hidden" id="active-project-views">
+        <!-- Script Input Section -->
+        <section class="card glass">
+          <h2>1. Video Script</h2>
+          <p class="subtitle">Write or paste your narration script below. We will parse it sentence-by-sentence to create scenes.</p>
+          <textarea id="script-textarea" class="input-field script-editor" placeholder="Write your YouTube short script here. Each sentence will automatically become one storyboard scene. For example:&#10;In a world where technology dominates, one AI tool stands out.&#10;It generates videos in minutes with zero GPU requirements.&#10;Try it today and kickstart your content creation journey!"></textarea>
+          <div class="action-bar">
+            <button id="btn-parse-script" class="btn btn-primary">Generate Storyboard Scenes 🚀</button>
+          </div>
+        </section>
+
+        <!-- Storyboard Scene List -->
+        <section class="card glass storyboard-card">
+          <div class="storyboard-header">
+            <h2>2. Storyboard & Scene Director</h2>
+            <div class="header-actions" style="display: flex; gap: 12px; align-items: center;">
+              <button id="btn-batch-generate" class="btn btn-secondary btn-sm" style="background: rgba(138, 92, 246, 0.15); border: 1px solid rgba(138, 92, 246, 0.3); color: var(--primary);">⚡ Batch Generate All</button>
+              <div class="status-summary">
+                Total Scenes: <span id="scene-count">0</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="scene-list" id="scene-list-container">
+            <!-- Scene cards dynamically loaded -->
+          </div>
+        </section>
+
+        <!-- Final Compilation & Output -->
+        <section class="card glass compile-card">
+          <h2>3. Compile & Export Video</h2>
+          <p class="subtitle">Once all voiceovers and video clips are generated for each scene, stitch them into a complete video with background music.</p>
+          
+          <div class="compile-split">
+            <div class="compile-controls">
+              <button id="btn-compile-video" class="btn btn-glow btn-lg">Compile Final Video ⚡</button>
+              
+              <div class="console-box" id="compile-console">
+                <div class="console-line system">Console initialized. Ready to compile.</div>
+              </div>
+            </div>
+            
+            <div class="compile-preview">
+              <h3>Video Render Output</h3>
+              <div class="video-preview-wrapper" id="final-video-wrapper">
+                <div class="video-placeholder">
+                  <span>No render compiled yet</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Modal: New Project -->
+  <div class="modal-overlay hidden" id="new-project-modal">
+    <div class="modal glass">
+      <h2>Create New Project</h2>
+      <div class="form-group">
+        <label for="new-project-title">Project Name</label>
+        <input type="text" id="new-project-title" class="input-field" placeholder="Epic Space Short">
+      </div>
+      <div class="form-group">
+        <label>Format</label>
+        <div class="radio-toggle-group">
+          <input type="radio" id="new-ratio-shorts" name="new-aspect-ratio" value="9:16" checked>
+          <label for="new-ratio-shorts">📱 Shorts (9:16)</label>
+          <input type="radio" id="new-ratio-wide" name="new-aspect-ratio" value="16:9">
+          <label for="new-ratio-wide">💻 YouTube (16:9)</label>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button id="btn-modal-cancel" class="btn btn-secondary">Cancel</button>
+        <button id="btn-modal-submit" class="btn btn-primary">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

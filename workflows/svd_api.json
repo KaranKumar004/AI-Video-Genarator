@@ -1,0 +1,123 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "RealVisXL_V4.0.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple"
+  },
+  "3": {
+    "inputs": {
+      "text": "masterpiece, best quality, 8k, ultra detailed, positive prompt, smooth motion, professional cinematography, cinematic lighting",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode"
+  },
+  "4": {
+    "inputs": {
+      "text": "static, still, motionless, blurry, low quality, deformed, distorted, ugly, bad anatomy, worst quality, low res, watermark",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode"
+  },
+  "5": {
+    "inputs": {
+      "seed": 42,
+      "steps": 25,
+      "cfg": 7.5,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "normal",
+      "denoise": 1.0,
+      "model": [
+        "13",
+        0
+      ],
+      "positive": [
+        "3",
+        0
+      ],
+      "negative": [
+        "4",
+        0
+      ],
+      "latent_image": [
+        "9",
+        0
+      ]
+    },
+    "class_type": "KSampler"
+  },
+  "9": {
+    "inputs": {
+      "width": 1024,
+      "height": 576,
+      "batch_size": 16
+    },
+    "class_type": "EmptyLatentImage"
+  },
+  "11": {
+    "inputs": {
+      "samples": [
+        "5",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecode"
+  },
+  "13": {
+    "inputs": {
+      "model_name": "mm_sdxl_v10_beta.ckpt",
+      "beta_schedule": "autoselect",
+      "model": [
+        "1",
+        0
+      ],
+      "context_options": [
+        "14",
+        0
+      ]
+    },
+    "class_type": "ADE_AnimateDiffLoaderGen1"
+  },
+  "14": {
+    "inputs": {
+      "context_length": 16,
+      "context_stride": 1,
+      "context_overlap": 4,
+      "closed_loop": false,
+      "fuse_method": "pyramid",
+      "use_on_equal_length": false,
+      "start_percent": 0.0,
+      "guarantee_steps": 1
+    },
+    "class_type": "ADE_LoopedUniformContextOptions"
+  },
+  "20": {
+    "inputs": {
+      "frame_rate": 8,
+      "loop_count": 0,
+      "filename_prefix": "AnimateDiff",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine"
+  }
+}

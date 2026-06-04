@@ -1,0 +1,6 @@
+node_modules/
+projects/
+*.mp4
+*.backup
+.DS_Store
+.env
