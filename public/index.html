@@ -53,6 +53,17 @@
             <input type="radio" id="ratio-wide" name="aspect-ratio" value="16:9">
             <label for="ratio-wide">💻 YouTube (16:9)</label>
           </div>
+        <div class="form-group" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 15px;">
+          <label>Character Reference Image (Optional)</label>
+          <div class="char-upload-box" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+            <input type="file" id="char-image-input" accept="image/*" style="display: none;">
+            <button type="button" id="btn-char-upload" class="btn btn-secondary btn-sm" style="width: 100%;">👤 Upload Character Image</button>
+            <div id="char-image-preview-wrapper" class="hidden" style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px;">
+              <img id="char-image-preview" src="" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover; border: 1px solid rgba(255,255,255,0.15);">
+              <span id="char-image-filename" style="font-size: 11px; color: var(--text-dark); word-break: break-all; flex-grow: 1;">character_reference.png</span>
+              <button type="button" id="btn-char-remove" style="background: none; border: none; color: #ff5555; cursor: pointer; font-size: 14px; padding: 0 4px;">&times;</button>
+            </div>
+          </div>
         </div>
         <button id="btn-save-project-settings" class="btn btn-primary btn-sm">Update Settings</button>
       </section>

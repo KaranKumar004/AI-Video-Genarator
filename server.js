@@ -194,6 +194,79 @@ app.get('/api/projects/:id', (req, res) => {
   }
 });
 
+// Upload character reference image for a project
+app.post('/api/projects/:id/upload-character-image', (req, res) => {
+  const { id } = req.params;
+  const { image } = req.body; // base64 Data URL
+  const projectDir = path.join(PROJECTS_DIR, id);
+  const file = path.join(projectDir, 'project.json');
+
+  if (!fs.existsSync(file)) {
+    return res.status(404).json({ error: 'Project not found' });
+  }
+
+  try {
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    
+    // Parse base64 image
+    const matches = image.match(/^data:image\/([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      return res.status(400).json({ error: 'Invalid image format' });
+    }
+
+    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+    const buffer = Buffer.from(matches[2], 'base64');
+    
+    const filename = `character_reference.${ext}`;
+    const outputPath = path.join(projectDir, 'assets', filename);
+    fs.writeFileSync(outputPath, buffer);
+
+    data.characterImageUrl = `/projects/${id}/assets/${filename}?t=${Date.now()}`;
+    fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+
+    res.json({ success: true, project: data });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to upload character image', details: e.message });
+  }
+});
+
+// Remove character reference image for a project
+app.post('/api/projects/:id/remove-character-image', (req, res) => {
+  const { id } = req.params;
+  const projectDir = path.join(PROJECTS_DIR, id);
+  const file = path.join(projectDir, 'project.json');
+
+  if (!fs.existsSync(file)) {
+    return res.status(404).json({ error: 'Project not found' });
+  }
+
+  try {
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    
+    // Scan and delete character reference file if exists
+    const assetsDir = path.join(projectDir, 'assets');
+    const files = fs.readdirSync(assetsDir);
+    files.forEach(f => {
+      if (f.startsWith('character_reference.')) {
+        try {
+          fs.unlinkSync(path.join(assetsDir, f));
+        } catch (e) {
+          // ignore
+        }
+      }
+    });
+
+    data.characterImageUrl = '';
+    fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+
+    res.json({ success: true, project: data });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to remove character image', details: e.message });
+  }
+});
+
 // Expose static access to project asset files
 app.use('/projects/:id/assets', (req, res, next) => {
   const assetPath = path.join(PROJECTS_DIR, req.params.id, 'assets', req.path);
@@ -414,6 +487,43 @@ app.post('/api/projects/:id/scenes/:index/generate-video', async (req, res) => {
         baseUrl = 'https://' + baseUrl;
       }
 
+      // Check if project has character reference image and upload it to ComfyUI first
+      let comfyImageName = '';
+      try {
+        const assetsDir = path.join(projectDir, 'assets');
+        if (fs.existsSync(assetsDir)) {
+          const files = fs.readdirSync(assetsDir);
+          const charFile = files.find(f => f.startsWith('character_reference.'));
+          if (charFile) {
+            const localImagePath = path.join(assetsDir, charFile);
+            console.log(`Uploading character reference image ${charFile} to ComfyUI...`);
+            
+            const fileBuffer = fs.readFileSync(localImagePath);
+            const fileExt = charFile.split('.').pop();
+            const fileBlob = new Blob([fileBuffer], { type: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}` });
+            const formData = new FormData();
+            formData.append('image', fileBlob, charFile);
+            formData.append('overwrite', 'true');
+
+            const uploadRes = await fetch(`${baseUrl}/upload/image`, {
+              method: 'POST',
+              body: formData,
+              signal: AbortSignal.timeout(15000)
+            });
+
+            if (uploadRes.ok) {
+              const uploadJson = await uploadRes.json();
+              comfyImageName = uploadJson.name;
+              console.log(`Uploaded character image successfully to ComfyUI input: ${comfyImageName}`);
+            } else {
+              console.warn(`ComfyUI image upload returned status code ${uploadRes.status}`);
+            }
+          }
+        }
+      } catch (uploadErr) {
+        console.error('Failed to upload character reference image to ComfyUI:', uploadErr.message);
+      }
+
       // Load prompt workflow template
       const workflowPath = path.join(__dirname, 'workflows', 'svd_api.json');
       let workflowJson;
@@ -494,6 +604,45 @@ app.post('/api/projects/:id/scenes/:index/generate-video', async (req, res) => {
           if (node.class_type === 'CLIPTextEncode' && node.inputs && 'text' in node.inputs) {
             node.inputs.text = promptText;
             break;
+          }
+        }
+      }
+
+      // 4. Inject LoadImage + VAEEncode + RepeatLatentBatch if character reference image is uploaded
+      if (comfyImageName) {
+        console.log(`Rewiring ComfyUI workflow for character consistency using image: ${comfyImageName}`);
+        
+        workflowJson["98"] = {
+          "class_type": "LoadImage",
+          "inputs": {
+            "image": comfyImageName,
+            "upload": "image"
+          }
+        };
+
+        workflowJson["99"] = {
+          "class_type": "VAEEncode",
+          "inputs": {
+            "pixels": ["98", 0],
+            "vae": ["1", 2]
+          }
+        };
+
+        workflowJson["100"] = {
+          "class_type": "RepeatLatentBatch",
+          "inputs": {
+            "samples": ["99", 0],
+            "amount": 16
+          }
+        };
+
+        // Find KSampler nodes and rewire them to use the new VAEEncode latent and a reduced denoise
+        for (const nodeId in workflowJson) {
+          const node = workflowJson[nodeId];
+          if ((node.class_type === 'KSampler' || node.class_type === 'KSamplerAdvanced') && node.inputs) {
+            node.inputs.latent_image = ["100", 0];
+            node.inputs.denoise = 0.70; // 0.70 denoise keeps the composition/character structure consistent!
+            console.log(`Rewired KSampler node ID ${nodeId} to use character image with denoise 0.70.`);
           }
         }
       }

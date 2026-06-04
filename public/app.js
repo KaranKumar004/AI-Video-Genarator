@@ -40,6 +40,13 @@ const sceneCountSpan = document.getElementById('scene-count');
 const sceneListContainer = document.getElementById('scene-list-container');
 const btnBatchGenerate = document.getElementById('btn-batch-generate');
 
+const charImageInput = document.getElementById('char-image-input');
+const btnCharUpload = document.getElementById('btn-char-upload');
+const charImagePreviewWrapper = document.getElementById('char-image-preview-wrapper');
+const charImagePreview = document.getElementById('char-image-preview');
+const charImageFilename = document.getElementById('char-image-filename');
+const btnCharRemove = document.getElementById('btn-char-remove');
+
 const btnCompileVideo = document.getElementById('btn-compile-video');
 const compileConsole = document.getElementById('compile-console');
 const finalVideoWrapper = document.getElementById('final-video-wrapper');
@@ -142,9 +149,80 @@ async function selectProject(id) {
 
     toggleProjectViews(true);
     renderActiveProjectDetails();
+    renderCharacterImagePreview();
     logConsole(`Project "${state.activeProject.title}" loaded successfully.`, 'system');
   } catch (e) {
     console.error('Failed to load project:', e);
+  }
+}
+
+// Upload Character Reference Image
+async function uploadCharacterImage(file) {
+  if (!state.activeProject) return;
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const base64Data = reader.result;
+    logConsole('Uploading character reference image...', 'info');
+
+    try {
+      const res = await fetch(`${API_BASE}/projects/${state.activeProject.id}/upload-character-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Data })
+      });
+      const data = await res.json();
+      if (data.success) {
+        state.activeProject = data.project;
+        renderCharacterImagePreview();
+        logConsole('Character reference image uploaded successfully!', 'success');
+      } else {
+        throw new Error(data.error || 'Upload failed');
+      }
+    } catch (e) {
+      logConsole(`Character upload failed: ${e.message}`, 'error');
+      alert(`Upload failed: ${e.message}`);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+// Remove Character Reference Image
+async function removeCharacterImage() {
+  if (!state.activeProject) return;
+  if (!confirm('Are you sure you want to remove the character reference image?')) return;
+
+  logConsole('Removing character reference image...', 'info');
+
+  try {
+    const res = await fetch(`${API_BASE}/projects/${state.activeProject.id}/remove-character-image`, {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (data.success) {
+      state.activeProject = data.project;
+      renderCharacterImagePreview();
+      charImageInput.value = ''; // clear input value
+      logConsole('Character reference image removed.', 'success');
+    } else {
+      throw new Error(data.error || 'Remove failed');
+    }
+  } catch (e) {
+    logConsole(`Failed to remove character image: ${e.message}`, 'error');
+  }
+}
+
+// Render Character Image Preview in Sidebar
+function renderCharacterImagePreview() {
+  if (state.activeProject && state.activeProject.characterImageUrl) {
+    charImagePreview.src = state.activeProject.characterImageUrl;
+    charImageFilename.innerText = 'character_reference.png';
+    charImagePreviewWrapper.classList.remove('hidden');
+    btnCharUpload.innerText = '👤 Change Character Image';
+  } else {
+    charImagePreview.src = '';
+    charImagePreviewWrapper.classList.add('hidden');
+    btnCharUpload.innerText = '👤 Upload Character Image';
   }
 }
 
@@ -591,6 +669,19 @@ btnCompileVideo.addEventListener('click', compileVideo);
 
 // Batch actions
 btnBatchGenerate.addEventListener('click', batchGenerateAll);
+
+// Character Reference Image upload actions
+btnCharUpload.addEventListener('click', () => {
+  charImageInput.click();
+});
+
+charImageInput.addEventListener('change', (e) => {
+  if (e.target.files && e.target.files[0]) {
+    uploadCharacterImage(e.target.files[0]);
+  }
+});
+
+btnCharRemove.addEventListener('click', removeCharacterImage);
 
 // App initialization
 window.addEventListener('DOMContentLoaded', async () => {
