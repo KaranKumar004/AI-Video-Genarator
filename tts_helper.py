@@ -7,11 +7,12 @@ import sys
 async def list_voices():
     try:
         voices = await edge_tts.VoicesManager.create()
-        english_voices = []
+        filtered_voices = []
         for voice in voices.voices:
-            # We filter for English locales by default to keep the UI clean
-            if "en-" in voice["Locale"].lower():
-                english_voices.append({
+            # Filter for English, Hindi, Kannada, and Tamil locales
+            locale_lower = voice["Locale"].lower()
+            if any(lang in locale_lower for lang in ["en-", "hi-", "kn-", "ta-"]):
+                filtered_voices.append({
                     "Name": voice["Name"],
                     "ShortName": voice["ShortName"],
                     "Gender": voice["Gender"],
@@ -19,8 +20,8 @@ async def list_voices():
                     "FriendlyName": f"{voice['FriendlyName']} ({voice['Gender']})"
                 })
         # Sort voices alphabetically by friendly name
-        english_voices.sort(key=lambda x: x["FriendlyName"])
-        print(json.dumps(english_voices))
+        filtered_voices.sort(key=lambda x: x["FriendlyName"])
+        print(json.dumps(filtered_voices))
     except Exception as e:
         print(json.dumps([
             {"ShortName": "en-US-GuyNeural", "FriendlyName": "Microsoft Guy (Male)", "Gender": "Male"},
