@@ -18,12 +18,20 @@ if (!fs.existsSync(INDEX_FILE)) fs.writeFileSync(INDEX_FILE, '[]', 'utf8');
 if (!fs.existsSync(USAGE_FILE)) fs.writeFileSync(USAGE_FILE, '{}', 'utf8');
 
 // Check Supabase env variables
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
+const SUPABASE_KEY = (process.env.SUPABASE_KEY || '').trim();
 const isSupabaseEnabled = SUPABASE_URL && SUPABASE_KEY;
 
 let supabase = null;
 if (isSupabaseEnabled) {
+  if (!SUPABASE_URL.startsWith('http://') && !SUPABASE_URL.startsWith('https://')) {
+    console.error('==================================================================');
+    console.error(' CRITICAL WARNING: SUPABASE_URL does not start with http:// or https://');
+    console.error(` Current value: "${SUPABASE_URL}"`);
+    console.error(' It should look like: https://xxxx.supabase.co');
+    console.error(' You might have pasted the PostgreSQL Connection String by mistake!');
+    console.error('==================================================================');
+  }
   console.log('Database Mode: Supabase enabled');
   supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 } else {
