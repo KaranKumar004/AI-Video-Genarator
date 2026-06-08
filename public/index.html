@@ -73,8 +73,11 @@
       </a>
     </div>
     
-    <!-- Top-right Launch App button -->
-    <div class="absolute top-6 right-4 sm:right-8 z-[60]">
+    <!-- Top-right actions -->
+    <div class="absolute top-6 right-4 sm:right-8 z-[60] flex items-center gap-2 sm:gap-4">
+      <button id="btn-colab-instructions" class="px-4 py-2 border border-white/30 bg-white/10 backdrop-blur rounded-full text-xs font-semibold uppercase text-white hover:bg-white/20 transition-all duration-200">
+        💡 Free GPU Setup
+      </button>
       <a href="/app.html" class="px-5 py-2 border-2 border-white rounded-full text-xs font-semibold uppercase text-white hover:bg-white hover:text-black transition-all duration-200">
         Create Video
       </a>
@@ -113,6 +116,64 @@
       </a>
     </div>
 
+  </div>
+
+  <!-- Modal: Colab Instructions -->
+  <div id="colab-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm hidden">
+    <div class="bg-zinc-900 border border-white/10 text-white rounded-2xl max-w-lg w-[90%] p-6 shadow-2xl relative">
+      <button id="btn-close-colab-modal" class="absolute top-4 right-4 text-white/60 hover:text-white text-xl font-bold focus:outline-none">&times;</button>
+      
+      <div class="flex items-center gap-3 mb-4">
+        <span class="text-3xl">🚀</span>
+        <h2 class="text-xl font-bold font-anton tracking-wide">Google Colab Free GPU Setup</h2>
+      </div>
+      
+      <p class="text-xs sm:text-sm text-zinc-300 leading-relaxed mb-4">
+        Generate your videos for free by connecting to Google Colab's cloud T4 GPU. Follow these instructions carefully:
+      </p>
+      
+      <!-- Download Button -->
+      <div class="mb-5">
+        <a href="/colab_tunnel.py" download="colab_tunnel.py" class="flex items-center justify-center gap-2 w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          Download Colab Script (colab_tunnel.py)
+        </a>
+      </div>
+      
+      <!-- Instructions Checklist -->
+      <div class="space-y-3 text-xs sm:text-sm text-zinc-200">
+        <div class="flex gap-2">
+          <span class="text-indigo-400 font-bold">1.</span>
+          <p>Open <strong>[Google Colab](https://colab.research.google.com)</strong> in your browser and log in.</p>
+        </div>
+        <div class="flex gap-2">
+          <span class="text-indigo-400 font-bold">2.</span>
+          <p>Create a new notebook, upload the downloaded <code>colab_tunnel.py</code> script, and mount Google Drive when prompted (necessary for storing models and outputs).</p>
+        </div>
+        <div class="flex gap-2">
+          <span class="text-indigo-400 font-bold">3.</span>
+          <p>Run the script. <strong>Note:</strong> It will take approximately <strong>20-25 minutes</strong> to download all checkpoints and initialize the tunnel.</p>
+        </div>
+        <div class="flex gap-2">
+          <span class="text-indigo-400 font-bold">4.</span>
+          <p>The script will output a secure public URL (e.g. <code>https://xxxx.trycloudflare.com</code>).</p>
+        </div>
+        <div class="flex gap-2">
+          <span class="text-indigo-400 font-bold">5.</span>
+          <p>Copy that URL, go to the <strong>Create Video</strong> studio, select <strong>ComfyUI</strong> under Cloud Provider, and paste it into the tunnel URL box.</p>
+        </div>
+        <div class="flex gap-2">
+          <span class="text-amber-400 font-bold">⚠️</span>
+          <p class="text-zinc-400">Keep the Colab page open and running in your browser tab while you generate videos.</p>
+        </div>
+      </div>
+      
+      <div class="mt-6 flex justify-end">
+        <button id="btn-close-colab-ok" class="px-5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-xs font-semibold uppercase transition-all">
+          Got it
+        </button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -271,6 +332,31 @@
       isMobile = window.innerWidth < 640;
       updateCarousel();
     });
+
+    // Colab Modal interaction
+    const colabModal = document.getElementById('colab-modal');
+    const btnColabInstructions = document.getElementById('btn-colab-instructions');
+    const btnCloseColabModal = document.getElementById('btn-close-colab-modal');
+    const btnCloseColabOk = document.getElementById('btn-close-colab-ok');
+
+    if (btnColabInstructions && colabModal) {
+      btnColabInstructions.addEventListener('click', () => {
+        colabModal.classList.remove('hidden');
+      });
+    }
+
+    const hideColabModal = () => {
+      if (colabModal) colabModal.classList.add('hidden');
+    };
+
+    if (btnCloseColabModal) btnCloseColabModal.addEventListener('click', hideColabModal);
+    if (btnCloseColabOk) btnCloseColabOk.addEventListener('click', hideColabModal);
+
+    if (colabModal) {
+      colabModal.addEventListener('click', (e) => {
+        if (e.target === colabModal) hideColabModal();
+      });
+    }
 
     // Initialize layout
     updateCarousel();
