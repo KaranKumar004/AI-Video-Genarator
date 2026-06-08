@@ -71,6 +71,11 @@ const userProfileHeader = document.getElementById('user-profile-header');
 const userEmailDisplay = document.getElementById('user-email-display');
 const btnLogout = document.getElementById('btn-logout');
 
+// Pro Limit Modal Elements
+const proLimitModal = document.getElementById('pro-limit-modal');
+const btnUpgradeGopro = document.getElementById('btn-upgrade-gopro');
+const btnProClose = document.getElementById('btn-pro-close');
+
 // Modal: New Project DOM Elements
 const newProjectModal = document.getElementById('new-project-modal');
 const newProjectTitle = document.getElementById('new-project-title');
@@ -153,7 +158,11 @@ function checkAuth() {
       .then(data => {
         if (data.success) {
           state.user = data.user;
-          userEmailDisplay.innerText = data.user.email;
+          if (data.user.isPro) {
+            userEmailDisplay.innerHTML = `${data.user.email} <span class="badge" style="background:#10b981; color:#fff; font-size:9px; padding:2px 6px; border-radius:10px; margin-left:5px; border:none;">PRO</span>`;
+          } else {
+            userEmailDisplay.innerText = data.user.email;
+          }
           fetchVoices();
           fetchProjects();
         } else {
@@ -584,6 +593,11 @@ async function triggerVideoGen(index) {
     statusIndicator.className = 'status-indicator video-status pending';
     statusIndicator.innerText = 'Video Failed';
     logConsole(`Scene ${index + 1} video generation failed: ${e.message}`, 'error');
+    if (e.message.includes('limit reached') || e.message.includes('Limit reached') || e.message.includes('429')) {
+      showProLimitModal();
+    } else {
+      alert(`Video Generation Failed: ${e.message}`);
+    }
     throw e;
   } finally {
     btn.disabled = false;
@@ -671,7 +685,11 @@ async function compileVideo() {
     }
   } catch (e) {
     logConsole(`Compilation failed: ${e.message}`, 'error');
-    alert(`Compilation failed: ${e.message}`);
+    if (e.message.includes('limit reached') || e.message.includes('Limit reached') || e.message.includes('429')) {
+      showProLimitModal();
+    } else {
+      alert(`Compilation failed: ${e.message}`);
+    }
     btnCompileVideo.disabled = false;
   }
 }
@@ -1112,6 +1130,89 @@ charImageInput.addEventListener('change', (e) => {
 });
 
 btnCharRemove.addEventListener('click', removeCharacterImage);
+
+// Pro Limit Modal Event Listeners & Functions
+function showProLimitModal() {
+  proLimitModal.classList.remove('hidden');
+}
+
+function hideProLimitModal() {
+  proLimitModal.classList.add('hidden');
+}
+
+btnProClose.addEventListener('click', hideProLimitModal);
+
+btnUpgradeGopro.addEventListener('click', async () => {
+  btnUpgradeGopro.disabled = true;
+  btnUpgradeGopro.innerText = 'Initializing...';
+  
+  try {
+    const configRes = await apiFetch(`${API_BASE}/config/razorpay-key`);
+    const configData = await configRes.json();
+    const keyId = configData.keyId;
+
+    if (!keyId || keyId === 'rzp_test_placeholder_key') {
+      console.warn('Razorpay Key ID is not configured on the server. Falling back to test checkout.');
+    }
+
+    const options = {
+      key: keyId,
+      amount: 99900, // Rs. 999 in subunits
+      currency: "INR",
+      name: "AI Video Studio Pro",
+      description: "Unlock unlimited video generation & compilation",
+      image: "https://unpkg.com/@lucide/lab/icons/clapperboard.svg",
+      handler: async function (response) {
+        btnUpgradeGopro.innerText = 'Upgrading...';
+        try {
+          const verifyRes = await apiFetch(`${API_BASE}/payments/upgrade-pro`, {
+            method: 'POST',
+            body: JSON.stringify({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature
+            })
+          });
+          const verifyData = await verifyRes.json();
+          if (verifyData.success) {
+            alert('🎉 Upgrade Succeeded! You are now a PRO user.');
+            hideProLimitModal();
+            checkAuth(); // refresh UI to display PRO badge
+          } else {
+            alert(`Upgrade failed: ${verifyData.error}`);
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Upgrade failed. Please contact support.');
+        } finally {
+          btnUpgradeGopro.disabled = false;
+          btnUpgradeGopro.innerText = 'Upgrade to Pro (₹999/mo) 💳';
+        }
+      },
+      prefill: {
+        email: state.user ? state.user.email : "",
+      },
+      theme: {
+        color: "#8a5cf6"
+      },
+      modal: {
+        ondismiss: function() {
+          btnUpgradeGopro.disabled = false;
+          btnUpgradeGopro.innerText = 'Upgrade to Pro (₹999/mo) 💳';
+        }
+      }
+    };
+
+    const rzp = new Razorpay(options);
+    rzp.open();
+
+  } catch (err) {
+    console.error(err);
+    alert('Failed to initialize Razorpay.');
+    btnUpgradeGopro.disabled = false;
+    btnUpgradeGopro.innerText = 'Upgrade to Pro (₹999/mo) 💳';
+  }
+});
 
 // App initialization
 window.addEventListener('DOMContentLoaded', async () => {

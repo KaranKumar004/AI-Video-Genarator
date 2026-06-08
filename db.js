@@ -106,11 +106,12 @@ const db = {
   // --- AUTHENTICATION ---
   async createUser(email, passwordHash) {
     const userId = 'user_' + Date.now() + Math.random().toString(36).substr(2, 5);
+    const isPro = email.toLowerCase() === 'karankumarsk14@gmail.com';
     
     if (isSupabaseEnabled) {
       const { data, error } = await supabase
         .from('users')
-        .insert([{ id: userId, email, password_hash: passwordHash }])
+        .insert([{ id: userId, email, password_hash: passwordHash, is_pro: isPro }])
         .select()
         .single();
       
@@ -121,7 +122,7 @@ const db = {
       if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
         throw new Error('Email already exists');
       }
-      const newUser = { id: userId, email, passwordHash, createdAt: new Date().toISOString() };
+      const newUser = { id: userId, email, passwordHash, isPro, createdAt: new Date().toISOString() };
       users.push(newUser);
       saveLocalUsers(users);
       return newUser;
@@ -142,12 +143,66 @@ const db = {
         id: data.id,
         email: data.email,
         passwordHash: data.password_hash,
+        isPro: data.is_pro || false,
         createdAt: data.created_at
       };
     } else {
       const users = getLocalUsers();
       const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
       return user || null;
+    }
+  },
+
+  async getUserById(id) {
+    if (isSupabaseEnabled) {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      
+      if (error) throw new Error(error.message);
+      if (!data) return null;
+      return {
+        id: data.id,
+        email: data.email,
+        passwordHash: data.password_hash,
+        isPro: data.is_pro || false,
+        createdAt: data.created_at
+      };
+    } else {
+      const users = getLocalUsers();
+      const user = users.find(u => u.id === id);
+      return user || null;
+    }
+  },
+
+  async updateUserProStatus(userId, isPro) {
+    if (isSupabaseEnabled) {
+      const { data, error } = await supabase
+        .from('users')
+        .update({ is_pro: isPro })
+        .eq('id', userId)
+        .select()
+        .single();
+      
+      if (error) throw new Error(error.message);
+      return {
+        id: data.id,
+        email: data.email,
+        passwordHash: data.password_hash,
+        isPro: data.is_pro || false,
+        createdAt: data.created_at
+      };
+    } else {
+      const users = getLocalUsers();
+      const idx = users.findIndex(u => u.id === userId);
+      if (idx !== -1) {
+        users[idx].isPro = isPro;
+        saveLocalUsers(users);
+        return users[idx];
+      }
+      throw new Error('User not found');
     }
   },
 
@@ -175,6 +230,7 @@ const db = {
   },
 
   async getProject(id, userId) {
+    console.log(`[db.getProject] Loading project. id=${id}, userId=${userId}, isSupabase=${isSupabaseEnabled}`);
     if (isSupabaseEnabled) {
       const { data, error } = await supabase
         .from('projects')
@@ -183,8 +239,15 @@ const db = {
         .eq('user_id', userId)
         .maybeSingle();
       
-      if (error) throw new Error(error.message);
-      if (!data) return null;
+      if (error) {
+        console.error(`[db.getProject] Supabase query error:`, error);
+        throw new Error(error.message);
+      }
+      if (!data) {
+        console.warn(`[db.getProject] Project not found in Supabase for id=${id}, userId=${userId}`);
+        return null;
+      }
+      console.log(`[db.getProject] Project found in Supabase. Title: "${data.title}"`);
       return {
         id: data.id,
         userId: data.user_id,
@@ -200,12 +263,21 @@ const db = {
     } else {
       const projectDir = path.join(PROJECTS_DIR, id);
       const file = path.join(projectDir, 'project.json');
-      if (!fs.existsSync(file)) return null;
+      console.log(`[db.getProject] Local file check: ${file}`);
+      if (!fs.existsSync(file)) {
+        console.warn(`[db.getProject] Local project file does not exist: ${file}`);
+        return null;
+      }
       try {
         const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-        if (data.userId !== userId) return null;
+        console.log(`[db.getProject] Local project file loaded. data.userId=${data.userId}, query userId=${userId}`);
+        if (data.userId !== userId) {
+          console.warn(`[db.getProject] Local project userId mismatch! data.userId=${data.userId}, query userId=${userId}`);
+          return null;
+        }
         return data;
       } catch (e) {
+        console.error(`[db.getProject] Local project file parse error:`, e);
         return null;
       }
     }
@@ -266,6 +338,7 @@ const db = {
   },
 
   async updateProject(id, userId, updatedFields) {
+    console.log(`[db.updateProject] Updating project. id=${id}, userId=${userId}, isSupabase=${isSupabaseEnabled}, fields=`, Object.keys(updatedFields));
     if (isSupabaseEnabled) {
       // Map JS camelCase fields to database snake_case
       const dbFields = {};
@@ -285,7 +358,11 @@ const db = {
         .select()
         .single();
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error(`[db.updateProject] Supabase update error:`, error);
+        throw new Error(error.message);
+      }
+      console.log(`[db.updateProject] Supabase update succeeded.`);
       return {
         id: data.id,
         userId: data.user_id,
@@ -301,13 +378,22 @@ const db = {
     } else {
       const projectDir = path.join(PROJECTS_DIR, id);
       const file = path.join(projectDir, 'project.json');
-      if (!fs.existsSync(file)) throw new Error('Project not found');
+      console.log(`[db.updateProject] Local file check: ${file}`);
+      if (!fs.existsSync(file)) {
+        console.error(`[db.updateProject] Local project file does not exist for update: ${file}`);
+        throw new Error('Project not found');
+      }
       
       const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-      if (data.userId !== userId) throw new Error('Unauthorized');
+      console.log(`[db.updateProject] Local project loaded. data.userId=${data.userId}, query userId=${userId}`);
+      if (data.userId !== userId) {
+        console.error(`[db.updateProject] Local project userId mismatch! data.userId=${data.userId}, query userId=${userId}`);
+        throw new Error('Unauthorized');
+      }
       
       const updatedData = { ...data, ...updatedFields, id: data.id, userId: data.userId };
       fs.writeFileSync(file, JSON.stringify(updatedData, null, 2), 'utf8');
+      console.log(`[db.updateProject] Local file updated successfully.`);
 
       // Update index if title or aspect ratio changed
       if (updatedFields.title !== undefined || updatedFields.aspectRatio !== undefined) {
@@ -354,6 +440,16 @@ const db = {
 
   // --- USAGE TRACKING ---
   async checkUsageLimit(userId, type) {
+    try {
+      const user = await db.getUserById(userId);
+      if (user && (user.isPro || user.email.toLowerCase() === 'karankumarsk14@gmail.com')) {
+        console.log(`[db.checkUsageLimit] User ${user.email} is Pro/Admin. Bypassing usage limits.`);
+        return true;
+      }
+    } catch (err) {
+      console.warn('[db.checkUsageLimit] Failed to fetch user for limit check:', err);
+    }
+
     const today = new Date().toISOString().split('T')[0];
     const maxVideo = 3;
     const maxThumbnail = 10;

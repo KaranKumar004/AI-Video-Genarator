@@ -127,6 +127,12 @@ app.post('/api/auth/signup', async (req, res) => {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
+  // Email format checker
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Invalid email address format' });
+  }
+
   try {
     const existingUser = await db.getUserByEmail(email);
     if (existingUser) {
@@ -180,11 +186,57 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.get('/api/auth/me', authenticateToken, (req, res) => {
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+  try {
+    const user = await db.getUserById(req.userId);
+    res.json({
+      success: true,
+      user: { 
+        id: req.userId, 
+        email: req.userEmail,
+        isPro: user ? (user.isPro || user.email.toLowerCase() === 'karankumarsk14@gmail.com') : false
+      }
+    });
+  } catch (e) {
+    res.json({
+      success: true,
+      user: { id: req.userId, email: req.userEmail, isPro: false }
+    });
+  }
+});
+
+// --- PAYMENTS & CONFIG ---
+
+app.get('/api/config/razorpay-key', (req, res) => {
   res.json({
-    success: true,
-    user: { id: req.userId, email: req.userEmail }
+    keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder_key'
   });
+});
+
+app.post('/api/payments/upgrade-pro', authenticateToken, async (req, res) => {
+  try {
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
+    
+    // Verify signature if key secret is present
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+    if (secret && razorpay_order_id && razorpay_signature) {
+      const crypto = require('crypto');
+      const shasum = crypto.createHmac('sha256', secret);
+      shasum.update(`${razorpay_order_id}|${razorpay_payment_id}`);
+      const digest = shasum.digest('hex');
+      if (digest !== razorpay_signature) {
+        return res.status(400).json({ error: 'Transaction signature verification failed' });
+      }
+    }
+
+    console.log(`[payments] Upgrading user ${req.userId} (${req.userEmail}) to PRO. Payment ID: ${razorpay_payment_id}`);
+    await db.updateUserProStatus(req.userId, true);
+    
+    res.json({ success: true, message: 'Successfully upgraded to PRO!' });
+  } catch (e) {
+    console.error('[payments] Failed to upgrade user:', e);
+    res.status(500).json({ error: 'Failed to upgrade to PRO. Please contact support.' });
+  }
 });
 
 // --- VOICES (PUBLIC) ---
@@ -412,8 +464,12 @@ app.post('/api/projects/:id/scenes/:index/generate-voice', authenticateToken, as
     }
 
     const scene = project.scenes[idx];
+    const assetsDir = path.join(projectDir, 'assets');
+    if (!fs.existsSync(assetsDir)) {
+      fs.mkdirSync(assetsDir, { recursive: true });
+    }
     const outputFilename = `scene_${idx}_audio.mp3`;
-    const outputPath = path.join(projectDir, 'assets', outputFilename);
+    const outputPath = path.join(assetsDir, outputFilename);
     const selectedVoice = voice || 'en-US-GuyNeural';
 
     console.log(`Generating voice for Scene ${idx} using ${selectedVoice}...`);
@@ -541,9 +597,13 @@ app.post('/api/projects/:id/scenes/:index/generate-video', authenticateToken, as
     }
 
     const scene = project.scenes[idx];
+    const assetsDir = path.join(projectDir, 'assets');
+    if (!fs.existsSync(assetsDir)) {
+      fs.mkdirSync(assetsDir, { recursive: true });
+    }
     const promptText = customPrompt || scene.prompt;
     const outputFilename = `scene_${idx}_video.mp4`;
-    const outputPath = path.join(projectDir, 'assets', outputFilename);
+    const outputPath = path.join(assetsDir, outputFilename);
 
     console.log(`Generating video for Scene ${idx} via provider [${provider}]...`);
 
@@ -913,11 +973,16 @@ app.post('/api/projects/:id/scenes/:index/generate-video', authenticateToken, as
 // Background compile function
 async function runBackgroundCompile(id, userId, bgMusic, bgVolume, burnCaptions) {
   const projectDir = path.join(PROJECTS_DIR, id);
+  console.log(`[runBackgroundCompile] Starting background compilation for project ID: ${id}, User ID: ${userId}`);
   
   try {
     const data = await db.getProject(id, userId);
-    if (!data) throw new Error('Project not found');
+    if (!data) {
+      console.error(`[runBackgroundCompile] db.getProject returned null/falsy for ID: ${id}, User: ${userId}`);
+      throw new Error('Project not found');
+    }
     const scenes = data.scenes || [];
+    console.log(`[runBackgroundCompile] Project data loaded successfully. Title: "${data.title}", Scenes count: ${scenes.length}`);
     
     // Resolution configuration
     let width = 1080;
@@ -1037,11 +1102,12 @@ async function runBackgroundCompile(id, userId, bgMusic, bgVolume, burnCaptions)
       console.warn('Error during cleanup:', cleanErr);
     }
 
-    console.log('Video compilation completed successfully!');
+    console.log('[runBackgroundCompile] Video compilation completed successfully! Calling incrementUsage and updateProject...');
     
     await db.incrementUsage(userId, 'video');
 
     const compiledVideoUrl = `/projects/${id}/assets/final_output.mp4?t=${Date.now()}`;
+    console.log(`[runBackgroundCompile] Updating project compilation video URL to: ${compiledVideoUrl}`);
     await db.updateProject(id, userId, {
       bgMusic: bgMusic || '',
       compiledVideoUrl
@@ -1050,9 +1116,10 @@ async function runBackgroundCompile(id, userId, bgMusic, bgVolume, burnCaptions)
     compileJobs[id].status = 'completed';
     compileJobs[id].currentStep = 'Completed';
     compileJobs[id].videoUrl = compiledVideoUrl;
+    console.log(`[runBackgroundCompile] Compilation job for project ID ${id} completed successfully.`);
 
   } catch (err) {
-    console.error('Compilation failed:', err);
+    console.error('[runBackgroundCompile] Compilation failed inside catch block:', err);
     compileJobs[id].status = 'failed';
     compileJobs[id].currentStep = 'Failed';
     compileJobs[id].error = err.message;
@@ -1062,11 +1129,16 @@ async function runBackgroundCompile(id, userId, bgMusic, bgVolume, burnCaptions)
 app.post('/api/projects/:id/compile', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { bgMusic, bgVolume, burnCaptions } = req.body;
+  console.log(`[/api/projects/:id/compile] Post request received. Project ID: ${id}, User ID: ${req.userId}`);
 
   try {
     const project = await db.getProject(id, req.userId);
-    if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (!project) {
+      console.warn(`[/api/projects/:id/compile] Project not found in DB check. ID: ${id}, User: ${req.userId}`);
+      return res.status(404).json({ error: 'Project not found' });
+    }
     const scenes = project.scenes || [];
+    console.log(`[/api/projects/:id/compile] Project found. Scenes count: ${scenes.length}. Checking if assets exist...`);
     
     if (scenes.length === 0) {
       return res.status(400).json({ error: 'No scenes to compile' });
@@ -1173,8 +1245,12 @@ app.post('/api/projects/:id/generate-thumbnail', authenticateToken, async (req, 
     }
 
     const stylePrompt = prompt || `YouTube thumbnail for a video about ${project.title}, vibrant colors, eye catching, 4k`;
+    const assetsDir = path.join(projectDir, 'assets');
+    if (!fs.existsSync(assetsDir)) {
+      fs.mkdirSync(assetsDir, { recursive: true });
+    }
     const outputFilename = `thumbnail.jpg`;
-    const outputPath = path.join(projectDir, 'assets', outputFilename);
+    const outputPath = path.join(assetsDir, outputFilename);
     
     let imageUrl = '';
 

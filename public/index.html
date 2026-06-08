@@ -1,380 +1,246 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Video Content Studio 🎬</title>
-  <!-- Google Fonts: Outfit & Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ToonHub - Premium AI Video Studio & Character Figurines</title>
+  <!-- Google Fonts: Anton & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+    .font-anton {
+      font-family: 'Anton', sans-serif;
+    }
+    /* Grain overlay style */
+    .grain-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0.4;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+      background-repeat: repeat;
+    }
+    /* Carousel item transition default */
+    .carousel-item {
+      position: absolute;
+      aspect-ratio: 0.6 / 1;
+      transform-origin: bottom center;
+      transition: transform 650ms cubic-bezier(0.4, 0, 0.2, 1),
+                  filter 650ms cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 650ms cubic-bezier(0.4, 0, 0.2, 1),
+                  left 650ms cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: transform, filter, opacity;
+    }
+  </style>
 </head>
-<body>
+<body class="w-full h-screen overflow-hidden">
 
-  <!-- Background decorative glowing orbs -->
-  <div class="glow-orb orb-1"></div>
-  <div class="glow-orb orb-2"></div>
-  <div class="glow-orb orb-3"></div>
-
-  <div class="app-container">
+  <!-- Outer transitions background-color -->
+  <div id="bg-container" class="relative w-full h-full overflow-hidden transition-all duration-[650ms] ease-[cubic-bezier(0.4,0,0.2,1)]" style="background-color: #F4845F;">
     
-    <!-- Sidebar / Control Panel -->
-    <aside class="sidebar glass">
-      <div class="brand" style="margin-bottom: 8px;">
-        <span class="icon">🎬</span>
-        <h1>AI Video Studio</h1>
-        <span class="badge">v1.0 SaaS</span>
-      </div>
+    <!-- 1. Grain overlay -->
+    <div class="grain-overlay"></div>
 
-      <!-- User Profile Header -->
-      <div class="user-profile-header hidden" id="user-profile-header" style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--text-dark); margin-bottom:15px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.08);">
-        <span id="user-email-display">user@domain.com</span>
-        <a href="#" id="btn-logout" style="color:#ff5555; text-decoration:none; font-weight:600;">Sign Out</a>
-      </div>
+    <!-- 2. Giant ghost text -->
+    <div class="absolute inset-x-0 top-[18%] flex items-center justify-center pointer-events-none select-none z-[2]">
+      <h1 class="font-anton text-white text-[90px] sm:text-[14vw] md:text-[18vw] lg:text-[20vw] opacity-100 font-black leading-none uppercase tracking-[-0.02em] whitespace-nowrap">
+        3D SHAPE
+      </h1>
+    </div>
 
-      <!-- Section: Projects Grid (History) -->
-      <section class="panel-section">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <h3 style="margin:0;">My Projects</h3>
-          <button id="btn-new-project" class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px;">+ New</button>
-        </div>
-        <div class="projects-list-container" id="projects-list-sidebar" style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-right:4px;">
-          <!-- Project items populated dynamically -->
-          <div style="text-align:center; padding:15px; color:var(--text-dark); font-size:11px;">Loading history...</div>
-        </div>
-      </section>
+    <!-- 3. Top-left brand label -->
+    <div class="absolute top-6 left-4 sm:left-8 z-[60]">
+      <a href="/app.html" class="text-xs font-semibold uppercase text-white opacity-90 tracking-[0.18em] hover:opacity-100 transition-opacity">
+        TOONHUB AI
+      </a>
+    </div>
+    
+    <!-- Top-right Launch App button -->
+    <div class="absolute top-6 right-4 sm:right-8 z-[60]">
+      <a href="/app.html" class="px-5 py-2 border-2 border-white rounded-full text-xs font-semibold uppercase text-white hover:bg-white hover:text-black transition-all duration-200">
+        Launch Studio
+      </a>
+    </div>
 
-      <!-- Section: Active Project Settings -->
-      <section class="panel-section project-settings-panel disabled" id="project-settings-sec">
-        <h3>Project Configuration</h3>
-        <div class="form-group">
-          <label for="project-title-input">Project Title</label>
-          <input type="text" id="project-title-input" class="input-field" placeholder="My Awesome Short">
-        </div>
-        <div class="form-group">
-          <label>Aspect Ratio</label>
-          <div class="radio-toggle-group" style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-            <input type="radio" id="ratio-shorts" name="aspect-ratio" value="9:16" checked>
-            <label for="ratio-shorts" style="padding:6px; font-size:10px;">📱 Shorts (9:16)</label>
-            <input type="radio" id="ratio-wide" name="aspect-ratio" value="16:9">
-            <label for="ratio-wide" style="padding:6px; font-size:10px;">💻 YouTube (16:9)</label>
-            <input type="radio" id="ratio-square" name="aspect-ratio" value="1:1">
-            <label for="ratio-square" style="padding:6px; font-size:10px;">🟦 Insta (1:1)</label>
-            <input type="radio" id="ratio-portrait" name="aspect-ratio" value="4:5">
-            <label for="ratio-portrait" style="padding:6px; font-size:10px;">📕 FB (4:5)</label>
-          </div>
-        </div>
-        <div class="form-group" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 15px;">
-          <label>Character Reference Image (Optional)</label>
-          <div class="char-upload-box" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
-            <input type="file" id="char-image-input" accept="image/*" style="display: none;">
-            <button type="button" id="btn-char-upload" class="btn btn-secondary btn-sm" style="width: 100%;">👤 Upload Character Image</button>
-            <div id="char-image-preview-wrapper" class="hidden" style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px;">
-              <img id="char-image-preview" src="" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover; border: 1px solid rgba(255,255,255,0.15);">
-              <span id="char-image-filename" style="font-size: 11px; color: var(--text-dark); word-break: break-all; flex-grow: 1;">character_ref.png</span>
-              <button type="button" id="btn-char-remove" style="background: none; border: none; color: #ff5555; cursor: pointer; font-size: 14px; padding: 0 4px;">&times;</button>
-            </div>
-          </div>
-        </div>
-        <button id="btn-save-project-settings" class="btn btn-primary btn-sm" style="width: 100%; margin-top:10px;">Update Settings</button>
-      </section>
+    <!-- 4. Carousel Container -->
+    <div id="carousel" class="absolute inset-0 z-[3]">
+      <!-- Will be populated dynamically by JS -->
+    </div>
 
-      <!-- Section: Cloud Generation Settings -->
-      <section class="panel-section">
-        <h3>Cloud AI Provider</h3>
-        
-        <div class="form-group">
-          <label for="provider-select">Video Provider</label>
-          <select id="provider-select" class="input-field">
-            <option value="fal">Fal.ai API (Hunyuan/Flux)</option>
-            <option value="replicate">Replicate API (Hunyuan/Flux)</option>
-            <option value="comfyui">ComfyUI (Local/Colab GPU)</option>
-          </select>
-        </div>
-
-        <!-- ComfyUI Fields -->
-        <div class="provider-fields hidden" id="fields-comfyui">
-          <div class="form-group">
-            <label for="comfy-url-input">ComfyUI Colab Tunnel URL</label>
-            <input type="text" id="comfy-url-input" class="input-field" placeholder="https://xxxx.pinggy.link">
-            <small class="help-text">Obtain this from running your Google Colab setup.</small>
-          </div>
-        </div>
-
-        <!-- Fal.ai Fields -->
-        <div class="provider-fields" id="fields-fal">
-          <div class="form-group">
-            <label for="fal-key-input">Fal.ai API Key</label>
-            <input type="password" id="fal-key-input" class="input-field" placeholder="fal_...">
-          </div>
-          <div class="form-group">
-            <label for="fal-model-select">Fal Video Model</label>
-            <select id="fal-model-select" class="input-field">
-              <option value="fal-ai/hunyuan-video">Hunyuan Video (Highly Realistic)</option>
-              <option value="fal-ai/cogvideox-5b">CogVideoX-5B</option>
-              <option value="fal-ai/ltx-video">LTX Video (Fast)</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Replicate Fields -->
-        <div class="provider-fields hidden" id="fields-replicate">
-          <div class="form-group">
-            <label for="replicate-key-input">Replicate API Key</label>
-            <input type="password" id="replicate-key-input" class="input-field" placeholder="r8_...">
-          </div>
-          <div class="form-group">
-            <label for="replicate-model-input">Replicate Model Config</label>
-            <input type="text" id="replicate-model-input" class="input-field" value="lucataco/hunyuan-video:855f4124" placeholder="owner/model:version_hash">
-          </div>
-        </div>
-      </section>
-
-      <!-- Section: Global Audio Settings -->
-      <section class="panel-section">
-        <h3>Audio & Voice</h3>
-        <div class="form-group">
-          <label for="voice-select">Narrator Voice (Edge TTS)</label>
-          <select id="voice-select" class="input-field">
-            <!-- Dynamically populated -->
-            <option value="en-US-GuyNeural">Guy (Male US)</option>
-            <option value="en-US-JennyNeural">Jenny (Female US)</option>
-            <option value="en-GB-SoniaNeural">Sonia (Female UK)</option>
-            <option value="en-GB-RyanNeural">Ryan (Male UK)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="bg-music-input">Background Music File Name</label>
-          <input type="text" id="bg-music-input" class="input-field" placeholder="e.g. cinematic.mp3">
-          <small class="help-text">Place the audio file in the project's assets folder.</small>
-        </div>
-        <div class="form-group">
-          <label for="bg-volume-input">Music Volume (0.0 - 1.0)</label>
-          <input type="number" id="bg-volume-input" class="input-field" min="0" max="1" step="0.01" value="0.08">
-        </div>
-      </section>
-    </aside>
-
-    <!-- Main Workspace Content -->
-    <main class="main-content">
-      
-      <!-- Project Selector Welcome Screen -->
-      <section class="card glass hero-card" id="no-project-selected-view">
-        <div class="hero-content">
-          <span class="big-icon">🎬</span>
-          <h2>Welcome to AI Video Content Studio</h2>
-          <p>Create high-quality, unique Shorts and YouTube videos by splitting scripts, rendering voiceovers, generating cloud AI video clips, and stitching it all together automatically.</p>
-          <button id="btn-create-first" class="btn btn-primary">Create Your First Project</button>
-        </div>
-      </section>
-
-      <div class="workspace-views hidden" id="active-project-views">
-        <!-- Script Input Section -->
-        <section class="card glass">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <h2>1. Video Script</h2>
-            <button id="btn-ai-script-trigger" class="btn btn-secondary btn-sm" style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#10b981; font-weight:600;">✨ Write Script with AI</button>
-          </div>
-          <p class="subtitle">Write or paste your narration script below. We will parse it sentence-by-sentence to create scenes.</p>
-          <textarea id="script-textarea" class="input-field script-editor" placeholder="Write your script here. Each sentence will automatically become one storyboard scene. For example:&#10;In a world where technology dominates, one AI tool stands out.&#10;It generates videos in minutes with zero GPU requirements.&#10;Try it today and kickstart your content creation journey!"></textarea>
-          <div class="action-bar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-            <div class="template-presets" style="display:flex; gap:6px; flex-wrap:wrap; font-size:12px; align-items:center;">
-              <span style="color:var(--text-dark); font-weight:500;">Presets:</span>
-              <button class="btn btn-secondary btn-xs btn-template" data-preset="shorts" style="padding: 4px 8px; font-size:11px;">📱 Shorts Hook</button>
-              <button class="btn btn-secondary btn-xs btn-template" data-preset="motivational" style="padding: 4px 8px; font-size:11px;">🔥 Motivational</button>
-              <button class="btn btn-secondary btn-xs btn-template" data-preset="kids" style="padding: 4px 8px; font-size:11px;">🧸 Kids Story</button>
-              <button class="btn btn-secondary btn-xs btn-template" data-preset="facts" style="padding: 4px 8px; font-size:11px;">💡 History Facts</button>
-            </div>
-            <button id="btn-parse-script" class="btn btn-primary">Generate Storyboard Scenes 🚀</button>
-          </div>
-        </section>
-
-        <!-- Storyboard Scene List -->
-        <section class="card glass storyboard-card">
-          <div class="storyboard-header">
-            <h2>2. Storyboard & Scene Director</h2>
-            <div class="header-actions" style="display: flex; gap: 12px; align-items: center;">
-              <button id="btn-batch-generate" class="btn btn-secondary btn-sm" style="background: rgba(138, 92, 246, 0.15); border: 1px solid rgba(138, 92, 246, 0.3); color: var(--primary); font-weight:600;">⚡ Batch Generate All</button>
-              <div class="status-summary">
-                Total Scenes: <span id="scene-count">0</span>
-              </div>
-            </div>
-          </div>
-          
-          <div class="scene-list" id="scene-list-container">
-            <!-- Scene cards dynamically loaded -->
-          </div>
-        </section>
-
-        <!-- Final Compilation & Output -->
-        <section class="card glass compile-card">
-          <h2>3. Compile & Export Video</h2>
-          <p class="subtitle">Once all voiceovers and video clips are generated for each scene, stitch them into a complete video with background music and subtitles.</p>
-          
-          <div class="compile-split">
-            <div class="compile-controls" style="display:flex; flex-direction:column; gap:12px;">
-              <div class="compile-options" style="display:flex; gap:12px; background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
-                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:500;">
-                  <input type="checkbox" id="check-burn-captions" checked style="width:16px; height:16px;">
-                  🔥 Burn-in Subtitles (Auto Captions)
-                </label>
-              </div>
-
-              <button id="btn-compile-video" class="btn btn-glow btn-lg" style="width:100%;">Compile Final Video ⚡</button>
-              
-              <div class="console-box" id="compile-console">
-                <div class="console-line system">Console initialized. Ready to compile.</div>
-              </div>
-
-              <!-- Thumbnail section inside compilation -->
-              <div class="thumbnail-gen-box" style="margin-top:10px; background:rgba(255,255,255,0.02); padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
-                <h4 style="margin:0 0 8px 0; font-size:13px; display:flex; justify-content:space-between; align-items:center; color:var(--text-main);">
-                  AI Cover Card / Thumbnail
-                  <button id="btn-generate-thumbnail" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;">🎨 Generate Cover</button>
-                </h4>
-                <div id="thumbnail-preview-wrapper" class="hidden" style="display:flex; flex-direction:column; gap:8px; align-items:center; margin-top:8px;">
-                  <img id="thumbnail-preview-img" src="" style="width:100%; max-height:160px; border-radius:6px; object-fit:cover; border:1px solid rgba(255,255,255,0.15);">
-                  <button id="btn-download-thumbnail" class="btn btn-secondary btn-sm" style="width:100%;">📥 Download Cover Image</button>
-                </div>
-                <div id="thumbnail-placeholder" style="text-align:center; padding:15px; color:var(--text-dark); font-size:11px; border:1px dashed rgba(255,255,255,0.1); border-radius:6px;">
-                  No cover generated yet
-                </div>
-              </div>
-            </div>
-            
-            <div class="compile-preview" style="display:flex; flex-direction:column; gap:10px;">
-              <h3>Video Render Output</h3>
-              <div class="video-preview-wrapper" id="final-video-wrapper">
-                <div class="video-placeholder">
-                  <span>No render compiled yet</span>
-                </div>
-              </div>
-              <div class="download-formats-card hidden" id="download-formats-card" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:5px;">
-                <button id="btn-download-video" class="btn btn-primary btn-sm">📥 Download Video</button>
-                <button id="btn-download-script" class="btn btn-secondary btn-sm">📝 Download Script</button>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-
-    </main>
-
-  </div>
-
-  <!-- Modal: New Project -->
-  <div class="modal-overlay hidden" id="new-project-modal">
-    <div class="modal glass">
-      <h2>Create New Project</h2>
-      <div class="form-group">
-        <label for="new-project-title">Project Name</label>
-        <input type="text" id="new-project-title" class="input-field" placeholder="Epic Space Short">
-      </div>
-      <div class="form-group">
-        <label>Format</label>
-        <div class="radio-toggle-group" style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-          <input type="radio" id="new-ratio-shorts" name="new-aspect-ratio" value="9:16" checked>
-          <label for="new-ratio-shorts" style="padding:6px; font-size:11px;">📱 Shorts (9:16)</label>
-          <input type="radio" id="new-ratio-wide" name="new-aspect-ratio" value="16:9">
-          <label for="new-ratio-wide" style="padding:6px; font-size:11px;">💻 YouTube (16:9)</label>
-          <input type="radio" id="new-ratio-square" name="new-aspect-ratio" value="1:1">
-          <label for="new-ratio-square" style="padding:6px; font-size:11px;">🟦 Insta (1:1)</label>
-          <input type="radio" id="new-ratio-portrait" name="new-aspect-ratio" value="4:5">
-          <label for="new-ratio-portrait" style="padding:6px; font-size:11px;">📕 FB (4:5)</label>
-        </div>
-      </div>
-      <div class="modal-buttons">
-        <button id="btn-modal-cancel" class="btn btn-secondary">Cancel</button>
-        <button id="btn-modal-submit" class="btn btn-primary">Create</button>
+    <!-- 5. Bottom-left text + navigation buttons -->
+    <div class="absolute bottom-6 left-4 sm:bottom-20 sm:left-24 z-[60] max-w-[320px]">
+      <p class="font-bold uppercase tracking-[0.02em] text-white opacity-95 text-base sm:text-[22px] mb-2 sm:mb-3">
+        TOONHUB FIGURINES
+      </p>
+      <p class="hidden sm:block text-xs sm:text-sm text-white opacity-85 leading-[1.6] mb-4 sm:mb-5">
+        The artwork is stunning, shipped fully prepared. The finish is a vision, the 3D craft is flawless. Many thanks! Wishing you the win. Order now.
+      </p>
+      <div class="flex gap-3">
+        <!-- Prev Button -->
+        <button id="btn-prev" class="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-white flex items-center justify-center text-white hover:scale-[1.08] hover:bg-[rgba(255,255,255,0.12)] transition-all duration-[150ms] focus:outline-none">
+          <i data-lucide="arrow-left" class="w-[26px] h-[26px]" style="stroke-width: 2.25;"></i>
+        </button>
+        <!-- Next Button -->
+        <button id="btn-next" class="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-white flex items-center justify-center text-white hover:scale-[1.08] hover:bg-[rgba(255,255,255,0.12)] transition-all duration-[150ms] focus:outline-none">
+          <i data-lucide="arrow-right" class="w-[26px] h-[26px]" style="stroke-width: 2.25;"></i>
+        </button>
       </div>
     </div>
-  </div>
 
-  <!-- Modal: AI Script Generator -->
-  <div class="modal-overlay hidden" id="ai-script-modal">
-    <div class="modal glass" style="max-width:480px; width:90%;">
-      <h2>✨ AI Script & Storyboard Generator</h2>
-      <p class="subtitle">Enter a topic and let AI write a highly engaging script and descriptive video generation prompts for you.</p>
-      
-      <div class="form-group">
-        <label for="ai-script-topic">Topic / Idea</label>
-        <input type="text" id="ai-script-topic" class="input-field" placeholder="e.g. 5 rules of survival in the desert, or kids story about a shy dragon">
-      </div>
-      
-      <div class="form-group" style="margin-top:12px;">
-        <label for="ai-script-style">Visual Style Preset</label>
-        <select id="ai-script-style" class="input-field">
-          <option value="Realistic">Realistic (Hunyuan Camera Footage)</option>
-          <option value="Cinematic" selected>Cinematic (Drama & Lighting)</option>
-          <option value="Anime">Anime (Japanese Hand-drawn)</option>
-          <option value="Cartoon">Cartoon (Flat Vector Illustration)</option>
-          <option value="3D Animation">3D Pixar Style (Soft Claymation)</option>
-          <option value="Kids Story">Kids Book Illustration (Whimsical)</option>
-        </select>
-      </div>
-      
-      <div class="form-group" style="margin-top:12px;">
-        <label for="ai-script-scenes">Number of Scenes</label>
-        <select id="ai-script-scenes" class="input-field">
-          <option value="3">3 Scenes (~10 seconds)</option>
-          <option value="5" selected>5 Scenes (~20 seconds)</option>
-          <option value="8">8 Scenes (~30 seconds)</option>
-          <option value="12">12 Scenes (~45 seconds)</option>
-        </select>
-      </div>
-
-      <div class="modal-buttons" style="margin-top:20px;">
-        <button id="btn-ai-script-cancel" class="btn btn-secondary">Cancel</button>
-        <button id="btn-ai-script-submit" class="btn btn-primary">Generate Script ⚡</button>
-      </div>
+    <!-- 6. Bottom-right link "DISCOVER IT" -->
+    <div class="absolute bottom-6 right-4 sm:bottom-20 sm:right-10 z-[60]">
+      <a href="/app.html" class="flex items-center gap-2 sm:gap-4 font-anton text-white opacity-95 hover:opacity-100 transition-opacity duration-200 uppercase tracking-[-0.02em] leading-none no-underline text-[20px] sm:text-[4vw] md:text-[5vw] lg:text-[56px]">
+        <span>DISCOVER IT</span>
+        <i data-lucide="arrow-right" class="w-5 h-5 sm:w-8 sm:h-8" style="stroke-width: 2.25;"></i>
+      </a>
     </div>
+
   </div>
 
-  <!-- Auth Overlay Screen -->
-  <div class="modal-overlay" id="auth-modal">
-    <div class="modal glass" style="max-width:380px; width:90%; padding:25px;">
-      <div class="brand" style="justify-content:center; margin-bottom:20px;">
-        <span class="icon" style="font-size:28px;">🎬</span>
-        <h2 style="font-family:'Outfit',sans-serif; font-weight:800; font-size:22px; margin:0;">AI Video Studio</h2>
-      </div>
+  <script>
+    // Image details
+    const IMAGES = [
+      { src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/1.02464a56.png', bg: '#F4845F', panel: '#F79B7F' },
+      { src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/2.b977faab.png', bg: '#6BBF7A', panel: '#85CC92' },
+      { src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/3.4df853b4.png', bg: '#E882B4', panel: '#ED9DC4' },
+      { src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/4.4457fbce.png', bg: '#6EB5FF', panel: '#8DC4FF' },
+    ];
+
+    let activeIndex = 0;
+    let isAnimating = false;
+    let isMobile = window.innerWidth < 640;
+
+    // Preload images
+    IMAGES.forEach(img => {
+      const i = new Image();
+      i.src = img.src;
+    });
+
+    const carousel = document.getElementById('carousel');
+    const bgContainer = document.getElementById('bg-container');
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+
+    // Create carousel elements
+    IMAGES.forEach((img, index) => {
+      const item = document.createElement('div');
+      item.id = `carousel-item-${index}`;
+      item.className = 'carousel-item';
       
-      <!-- Login Form -->
-      <div id="login-form-wrapper">
-        <h3 style="margin-bottom:12px; text-align:center; font-size:16px;">Sign In to Your Account</h3>
-        <div class="form-group">
-          <label for="login-email">Email Address</label>
-          <input type="email" id="login-email" class="input-field" placeholder="name@domain.com">
-        </div>
-        <div class="form-group" style="margin-top:10px;">
-          <label for="login-password">Password</label>
-          <input type="password" id="login-password" class="input-field" placeholder="••••••••">
-        </div>
-        <button id="btn-login-submit" class="btn btn-primary" style="width:100%; margin-top:18px; font-weight:600; padding:10px; font-size:13px;">Sign In 🚀</button>
-        <p style="text-align:center; font-size:11px; margin-top:12px; color:var(--text-dark);">
-          Don't have an account? <a href="#" id="link-goto-signup" style="color:var(--primary); font-weight:600; text-decoration:none;">Create one</a>
-        </p>
-      </div>
+      const imageEl = document.createElement('img');
+      imageEl.src = img.src;
+      imageEl.className = 'w-full h-full object-contain object-bottom pointer-events-none select-none';
+      imageEl.draggable = false;
+      
+      item.appendChild(imageEl);
+      carousel.appendChild(item);
+    });
 
-      <!-- Signup Form -->
-      <div id="signup-form-wrapper" class="hidden">
-        <h3 style="margin-bottom:12px; text-align:center; font-size:16px;">Create Your Account</h3>
-        <div class="form-group">
-          <label for="signup-email">Email Address</label>
-          <input type="email" id="signup-email" class="input-field" placeholder="name@domain.com">
-        </div>
-        <div class="form-group" style="margin-top:10px;">
-          <label for="signup-password">Password</label>
-          <input type="password" id="signup-password" class="input-field" placeholder="Min 6 characters">
-        </div>
-        <button id="btn-signup-submit" class="btn btn-primary" style="width:100%; margin-top:18px; font-weight:600; padding:10px; font-size:13px;">Create Account 🎉</button>
-        <p style="text-align:center; font-size:11px; margin-top:12px; color:var(--text-dark);">
-          Already have an account? <a href="#" id="link-goto-login" style="color:var(--primary); font-weight:600; text-decoration:none;">Sign In</a>
-        </p>
-      </div>
-    </div>
-  </div>
+    // Update layout positions based on current roles
+    function updateCarousel() {
+      // Background color transition
+      bgContainer.style.backgroundColor = IMAGES[activeIndex].bg;
 
-  <script src="app.js"></script>
+      // Roles mapping
+      const centerIdx = activeIndex;
+      const leftIdx = (activeIndex + 3) % 4;
+      const rightIdx = (activeIndex + 1) % 4;
+      const backIdx = (activeIndex + 2) % 4;
+
+      // Update positions
+      for (let index = 0; index < 4; index++) {
+        const item = document.getElementById(`carousel-item-${index}`);
+        if (!item) continue;
+
+        if (index === centerIdx) {
+          // Center
+          item.style.transform = `translateX(-50%) scale(${isMobile ? 1.25 : 1.68})`;
+          item.style.filter = 'blur(0px)';
+          item.style.opacity = '1';
+          item.style.zIndex = '20';
+          item.style.left = '50%';
+          item.style.height = isMobile ? '60%' : '92%';
+          item.style.bottom = isMobile ? '22%' : '0px';
+        } else if (index === leftIdx) {
+          // Left
+          item.style.transform = 'translateX(-50%) scale(1)';
+          item.style.filter = 'blur(2px)';
+          item.style.opacity = '0.85';
+          item.style.zIndex = '10';
+          item.style.left = isMobile ? '20%' : '30%';
+          item.style.height = isMobile ? '16%' : '28%';
+          item.style.bottom = isMobile ? '32%' : '12%';
+        } else if (index === rightIdx) {
+          // Right
+          item.style.transform = 'translateX(-50%) scale(1)';
+          item.style.filter = 'blur(2px)';
+          item.style.opacity = '0.85';
+          item.style.zIndex = '10';
+          item.style.left = isMobile ? '80%' : '70%';
+          item.style.height = isMobile ? '16%' : '28%';
+          item.style.bottom = isMobile ? '32%' : '12%';
+        } else if (index === backIdx) {
+          // Back
+          item.style.transform = 'translateX(-50%) scale(1)';
+          item.style.filter = 'blur(4px)';
+          item.style.opacity = '1';
+          item.style.zIndex = '5';
+          item.style.left = '50%';
+          item.style.height = isMobile ? '13%' : '22%';
+          item.style.bottom = isMobile ? '32%' : '12%';
+        }
+      }
+    }
+
+    function navigate(direction) {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      if (direction === 'next') {
+        activeIndex = (activeIndex + 1) % 4;
+      } else {
+        activeIndex = (activeIndex + 3) % 4;
+      }
+
+      updateCarousel();
+
+      setTimeout(() => {
+        isAnimating = false;
+      }, 650);
+    }
+
+    // Event listeners
+    btnPrev.addEventListener('click', () => navigate('prev'));
+    btnNext.addEventListener('click', () => navigate('next'));
+
+    window.addEventListener('resize', () => {
+      isMobile = window.innerWidth < 640;
+      updateCarousel();
+    });
+
+    // Initialize layout
+    updateCarousel();
+
+    // Render Lucide icons
+    lucide.createIcons();
+  </script>
 </body>
 </html>

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Video Content Studio 🎬</title>
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Background decorative glowing orbs -->
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+  <div class="glow-orb orb-3"></div>
+
+  <div class="app-container">
+    
+    <!-- Sidebar / Control Panel -->
+    <aside class="sidebar glass">
+      <div class="brand" style="margin-bottom: 8px;">
+        <span class="icon">🎬</span>
+        <h1>AI Video Studio</h1>
+        <span class="badge">v1.0 SaaS</span>
+      </div>
+
+      <!-- User Profile Header -->
+      <div class="user-profile-header hidden" id="user-profile-header" style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--text-dark); margin-bottom:15px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.08);">
+        <span id="user-email-display">user@domain.com</span>
+        <a href="#" id="btn-logout" style="color:#ff5555; text-decoration:none; font-weight:600;">Sign Out</a>
+      </div>
+
+      <!-- Section: Projects Grid (History) -->
+      <section class="panel-section">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="margin:0;">My Projects</h3>
+          <button id="btn-new-project" class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px;">+ New</button>
+        </div>
+        <div class="projects-list-container" id="projects-list-sidebar" style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-right:4px;">
+          <!-- Project items populated dynamically -->
+          <div style="text-align:center; padding:15px; color:var(--text-dark); font-size:11px;">Loading history...</div>
+        </div>
+      </section>
+
+      <!-- Section: Active Project Settings -->
+      <section class="panel-section project-settings-panel disabled" id="project-settings-sec">
+        <h3>Project Configuration</h3>
+        <div class="form-group">
+          <label for="project-title-input">Project Title</label>
+          <input type="text" id="project-title-input" class="input-field" placeholder="My Awesome Short">
+        </div>
+        <div class="form-group">
+          <label>Aspect Ratio</label>
+          <div class="radio-toggle-group" style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <input type="radio" id="ratio-shorts" name="aspect-ratio" value="9:16" checked>
+            <label for="ratio-shorts" style="padding:6px; font-size:10px;">📱 Shorts (9:16)</label>
+            <input type="radio" id="ratio-wide" name="aspect-ratio" value="16:9">
+            <label for="ratio-wide" style="padding:6px; font-size:10px;">💻 YouTube (16:9)</label>
+            <input type="radio" id="ratio-square" name="aspect-ratio" value="1:1">
+            <label for="ratio-square" style="padding:6px; font-size:10px;">🟦 Insta (1:1)</label>
+            <input type="radio" id="ratio-portrait" name="aspect-ratio" value="4:5">
+            <label for="ratio-portrait" style="padding:6px; font-size:10px;">📕 FB (4:5)</label>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 15px;">
+          <label>Character Reference Image (Optional)</label>
+          <div class="char-upload-box" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+            <input type="file" id="char-image-input" accept="image/*" style="display: none;">
+            <button type="button" id="btn-char-upload" class="btn btn-secondary btn-sm" style="width: 100%;">👤 Upload Character Image</button>
+            <div id="char-image-preview-wrapper" class="hidden" style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px;">
+              <img id="char-image-preview" src="" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover; border: 1px solid rgba(255,255,255,0.15);">
+              <span id="char-image-filename" style="font-size: 11px; color: var(--text-dark); word-break: break-all; flex-grow: 1;">character_ref.png</span>
+              <button type="button" id="btn-char-remove" style="background: none; border: none; color: #ff5555; cursor: pointer; font-size: 14px; padding: 0 4px;">&times;</button>
+            </div>
+          </div>
+        </div>
+        <button id="btn-save-project-settings" class="btn btn-primary btn-sm" style="width: 100%; margin-top:10px;">Update Settings</button>
+      </section>
+
+      <!-- Section: Cloud Generation Settings -->
+      <section class="panel-section">
+        <h3>Cloud AI Provider</h3>
+        
+        <div class="form-group">
+          <label for="provider-select">Video Provider</label>
+          <select id="provider-select" class="input-field">
+            <option value="fal">Fal.ai API (Hunyuan/Flux)</option>
+            <option value="replicate">Replicate API (Hunyuan/Flux)</option>
+            <option value="comfyui">ComfyUI (Local/Colab GPU)</option>
+          </select>
+        </div>
+
+        <!-- ComfyUI Fields -->
+        <div class="provider-fields hidden" id="fields-comfyui">
+          <div class="form-group">
+            <label for="comfy-url-input">ComfyUI Colab Tunnel URL</label>
+            <input type="text" id="comfy-url-input" class="input-field" placeholder="https://xxxx.pinggy.link">
+            <small class="help-text">Obtain this from running your Google Colab setup.</small>
+          </div>
+        </div>
+
+        <!-- Fal.ai Fields -->
+        <div class="provider-fields" id="fields-fal">
+          <div class="form-group">
+            <label for="fal-key-input">Fal.ai API Key</label>
+            <input type="password" id="fal-key-input" class="input-field" placeholder="fal_...">
+          </div>
+          <div class="form-group">
+            <label for="fal-model-select">Fal Video Model</label>
+            <select id="fal-model-select" class="input-field">
+              <option value="fal-ai/hunyuan-video">Hunyuan Video (Highly Realistic)</option>
+              <option value="fal-ai/cogvideox-5b">CogVideoX-5B</option>
+              <option value="fal-ai/ltx-video">LTX Video (Fast)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Replicate Fields -->
+        <div class="provider-fields hidden" id="fields-replicate">
+          <div class="form-group">
+            <label for="replicate-key-input">Replicate API Key</label>
+            <input type="password" id="replicate-key-input" class="input-field" placeholder="r8_...">
+          </div>
+          <div class="form-group">
+            <label for="replicate-model-input">Replicate Model Config</label>
+            <input type="text" id="replicate-model-input" class="input-field" value="lucataco/hunyuan-video:855f4124" placeholder="owner/model:version_hash">
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Global Audio Settings -->
+      <section class="panel-section">
+        <h3>Audio & Voice</h3>
+        <div class="form-group">
+          <label for="voice-select">Narrator Voice (Edge TTS)</label>
+          <select id="voice-select" class="input-field">
+            <!-- Dynamically populated -->
+            <option value="en-US-GuyNeural">Guy (Male US)</option>
+            <option value="en-US-JennyNeural">Jenny (Female US)</option>
+            <option value="en-GB-SoniaNeural">Sonia (Female UK)</option>
+            <option value="en-GB-RyanNeural">Ryan (Male UK)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="bg-music-input">Background Music File Name</label>
+          <input type="text" id="bg-music-input" class="input-field" placeholder="e.g. cinematic.mp3">
+          <small class="help-text">Place the audio file in the project's assets folder.</small>
+        </div>
+        <div class="form-group">
+          <label for="bg-volume-input">Music Volume (0.0 - 1.0)</label>
+          <input type="number" id="bg-volume-input" class="input-field" min="0" max="1" step="0.01" value="0.08">
+        </div>
+      </section>
+    </aside>
+
+    <!-- Main Workspace Content -->
+    <main class="main-content">
+      
+      <!-- Project Selector Welcome Screen -->
+      <section class="card glass hero-card" id="no-project-selected-view">
+        <div class="hero-content">
+          <span class="big-icon">🎬</span>
+          <h2>Welcome to AI Video Content Studio</h2>
+          <p>Create high-quality, unique Shorts and YouTube videos by splitting scripts, rendering voiceovers, generating cloud AI video clips, and stitching it all together automatically.</p>
+          <button id="btn-create-first" class="btn btn-primary">Create Your First Project</button>
+        </div>
+      </section>
+
+      <div class="workspace-views hidden" id="active-project-views">
+        <!-- Script Input Section -->
+        <section class="card glass">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <h2>1. Video Script</h2>
+            <button id="btn-ai-script-trigger" class="btn btn-secondary btn-sm" style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#10b981; font-weight:600;">✨ Write Script with AI</button>
+          </div>
+          <p class="subtitle">Write or paste your narration script below. We will parse it sentence-by-sentence to create scenes.</p>
+          <textarea id="script-textarea" class="input-field script-editor" placeholder="Write your script here. Each sentence will automatically become one storyboard scene. For example:&#10;In a world where technology dominates, one AI tool stands out.&#10;It generates videos in minutes with zero GPU requirements.&#10;Try it today and kickstart your content creation journey!"></textarea>
+          <div class="action-bar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div class="template-presets" style="display:flex; gap:6px; flex-wrap:wrap; font-size:12px; align-items:center;">
+              <span style="color:var(--text-dark); font-weight:500;">Presets:</span>
+              <button class="btn btn-secondary btn-xs btn-template" data-preset="shorts" style="padding: 4px 8px; font-size:11px;">📱 Shorts Hook</button>
+              <button class="btn btn-secondary btn-xs btn-template" data-preset="motivational" style="padding: 4px 8px; font-size:11px;">🔥 Motivational</button>
+              <button class="btn btn-secondary btn-xs btn-template" data-preset="kids" style="padding: 4px 8px; font-size:11px;">🧸 Kids Story</button>
+              <button class="btn btn-secondary btn-xs btn-template" data-preset="facts" style="padding: 4px 8px; font-size:11px;">💡 History Facts</button>
+            </div>
+            <button id="btn-parse-script" class="btn btn-primary">Generate Storyboard Scenes 🚀</button>
+          </div>
+        </section>
+
+        <!-- Storyboard Scene List -->
+        <section class="card glass storyboard-card">
+          <div class="storyboard-header">
+            <h2>2. Storyboard & Scene Director</h2>
+            <div class="header-actions" style="display: flex; gap: 12px; align-items: center;">
+              <button id="btn-batch-generate" class="btn btn-secondary btn-sm" style="background: rgba(138, 92, 246, 0.15); border: 1px solid rgba(138, 92, 246, 0.3); color: var(--primary); font-weight:600;">⚡ Batch Generate All</button>
+              <div class="status-summary">
+                Total Scenes: <span id="scene-count">0</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="scene-list" id="scene-list-container">
+            <!-- Scene cards dynamically loaded -->
+          </div>
+        </section>
+
+        <!-- Final Compilation & Output -->
+        <section class="card glass compile-card">
+          <h2>3. Compile & Export Video</h2>
+          <p class="subtitle">Once all voiceovers and video clips are generated for each scene, stitch them into a complete video with background music and subtitles.</p>
+          
+          <div class="compile-split">
+            <div class="compile-controls" style="display:flex; flex-direction:column; gap:12px;">
+              <div class="compile-options" style="display:flex; gap:12px; background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:500;">
+                  <input type="checkbox" id="check-burn-captions" checked style="width:16px; height:16px;">
+                  🔥 Burn-in Subtitles (Auto Captions)
+                </label>
+              </div>
+
+              <button id="btn-compile-video" class="btn btn-glow btn-lg" style="width:100%;">Compile Final Video ⚡</button>
+              
+              <div class="console-box" id="compile-console">
+                <div class="console-line system">Console initialized. Ready to compile.</div>
+              </div>
+
+              <!-- Thumbnail section inside compilation -->
+              <div class="thumbnail-gen-box" style="margin-top:10px; background:rgba(255,255,255,0.02); padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                <h4 style="margin:0 0 8px 0; font-size:13px; display:flex; justify-content:space-between; align-items:center; color:var(--text-main);">
+                  AI Cover Card / Thumbnail
+                  <button id="btn-generate-thumbnail" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;">🎨 Generate Cover</button>
+                </h4>
+                <div id="thumbnail-preview-wrapper" class="hidden" style="display:flex; flex-direction:column; gap:8px; align-items:center; margin-top:8px;">
+                  <img id="thumbnail-preview-img" src="" style="width:100%; max-height:160px; border-radius:6px; object-fit:cover; border:1px solid rgba(255,255,255,0.15);">
+                  <button id="btn-download-thumbnail" class="btn btn-secondary btn-sm" style="width:100%;">📥 Download Cover Image</button>
+                </div>
+                <div id="thumbnail-placeholder" style="text-align:center; padding:15px; color:var(--text-dark); font-size:11px; border:1px dashed rgba(255,255,255,0.1); border-radius:6px;">
+                  No cover generated yet
+                </div>
+              </div>
+            </div>
+            
+            <div class="compile-preview" style="display:flex; flex-direction:column; gap:10px;">
+              <h3>Video Render Output</h3>
+              <div class="video-preview-wrapper" id="final-video-wrapper">
+                <div class="video-placeholder">
+                  <span>No render compiled yet</span>
+                </div>
+              </div>
+              <div class="download-formats-card hidden" id="download-formats-card" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:5px;">
+                <button id="btn-download-video" class="btn btn-primary btn-sm">📥 Download Video</button>
+                <button id="btn-download-script" class="btn btn-secondary btn-sm">📝 Download Script</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Modal: New Project -->
+  <div class="modal-overlay hidden" id="new-project-modal">
+    <div class="modal glass">
+      <h2>Create New Project</h2>
+      <div class="form-group">
+        <label for="new-project-title">Project Name</label>
+        <input type="text" id="new-project-title" class="input-field" placeholder="Epic Space Short">
+      </div>
+      <div class="form-group">
+        <label>Format</label>
+        <div class="radio-toggle-group" style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+          <input type="radio" id="new-ratio-shorts" name="new-aspect-ratio" value="9:16" checked>
+          <label for="new-ratio-shorts" style="padding:6px; font-size:11px;">📱 Shorts (9:16)</label>
+          <input type="radio" id="new-ratio-wide" name="new-aspect-ratio" value="16:9">
+          <label for="new-ratio-wide" style="padding:6px; font-size:11px;">💻 YouTube (16:9)</label>
+          <input type="radio" id="new-ratio-square" name="new-aspect-ratio" value="1:1">
+          <label for="new-ratio-square" style="padding:6px; font-size:11px;">🟦 Insta (1:1)</label>
+          <input type="radio" id="new-ratio-portrait" name="new-aspect-ratio" value="4:5">
+          <label for="new-ratio-portrait" style="padding:6px; font-size:11px;">📕 FB (4:5)</label>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button id="btn-modal-cancel" class="btn btn-secondary">Cancel</button>
+        <button id="btn-modal-submit" class="btn btn-primary">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: AI Script Generator -->
+  <div class="modal-overlay hidden" id="ai-script-modal">
+    <div class="modal glass" style="max-width:480px; width:90%;">
+      <h2>✨ AI Script & Storyboard Generator</h2>
+      <p class="subtitle">Enter a topic and let AI write a highly engaging script and descriptive video generation prompts for you.</p>
+      
+      <div class="form-group">
+        <label for="ai-script-topic">Topic / Idea</label>
+        <input type="text" id="ai-script-topic" class="input-field" placeholder="e.g. 5 rules of survival in the desert, or kids story about a shy dragon">
+      </div>
+      
+      <div class="form-group" style="margin-top:12px;">
+        <label for="ai-script-style">Visual Style Preset</label>
+        <select id="ai-script-style" class="input-field">
+          <option value="Realistic">Realistic (Hunyuan Camera Footage)</option>
+          <option value="Cinematic" selected>Cinematic (Drama & Lighting)</option>
+          <option value="Anime">Anime (Japanese Hand-drawn)</option>
+          <option value="Cartoon">Cartoon (Flat Vector Illustration)</option>
+          <option value="3D Animation">3D Pixar Style (Soft Claymation)</option>
+          <option value="Kids Story">Kids Book Illustration (Whimsical)</option>
+        </select>
+      </div>
+      
+      <div class="form-group" style="margin-top:12px;">
+        <label for="ai-script-scenes">Number of Scenes</label>
+        <select id="ai-script-scenes" class="input-field">
+          <option value="3">3 Scenes (~10 seconds)</option>
+          <option value="5" selected>5 Scenes (~20 seconds)</option>
+          <option value="8">8 Scenes (~30 seconds)</option>
+          <option value="12">12 Scenes (~45 seconds)</option>
+        </select>
+      </div>
+
+      <div class="modal-buttons" style="margin-top:20px;">
+        <button id="btn-ai-script-cancel" class="btn btn-secondary">Cancel</button>
+        <button id="btn-ai-script-submit" class="btn btn-primary">Generate Script ⚡</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth Overlay Screen -->
+  <div class="modal-overlay" id="auth-modal">
+    <div class="modal glass" style="max-width:380px; width:90%; padding:25px;">
+      <div class="brand" style="justify-content:center; margin-bottom:20px;">
+        <span class="icon" style="font-size:28px;">🎬</span>
+        <h2 style="font-family:'Outfit',sans-serif; font-weight:800; font-size:22px; margin:0;">AI Video Studio</h2>
+      </div>
+      
+      <!-- Login Form -->
+      <div id="login-form-wrapper">
+        <h3 style="margin-bottom:12px; text-align:center; font-size:16px;">Sign In to Your Account</h3>
+        <div class="form-group">
+          <label for="login-email">Email Address</label>
+          <input type="email" id="login-email" class="input-field" placeholder="name@domain.com">
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" class="input-field" placeholder="••••••••">
+        </div>
+        <button id="btn-login-submit" class="btn btn-primary" style="width:100%; margin-top:18px; font-weight:600; padding:10px; font-size:13px;">Sign In 🚀</button>
+        <p style="text-align:center; font-size:11px; margin-top:12px; color:var(--text-dark);">
+          Don't have an account? <a href="#" id="link-goto-signup" style="color:var(--primary); font-weight:600; text-decoration:none;">Create one</a>
+        </p>
+      </div>
+
+      <!-- Signup Form -->
+      <div id="signup-form-wrapper" class="hidden">
+        <h3 style="margin-bottom:12px; text-align:center; font-size:16px;">Create Your Account</h3>
+        <div class="form-group">
+          <label for="signup-email">Email Address</label>
+          <input type="email" id="signup-email" class="input-field" placeholder="name@domain.com">
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+          <label for="signup-password">Password</label>
+          <input type="password" id="signup-password" class="input-field" placeholder="Min 6 characters">
+        </div>
+        <button id="btn-signup-submit" class="btn btn-primary" style="width:100%; margin-top:18px; font-weight:600; padding:10px; font-size:13px;">Create Account 🎉</button>
+        <p style="text-align:center; font-size:11px; margin-top:12px; color:var(--text-dark);">
+          Already have an account? <a href="#" id="link-goto-login" style="color:var(--primary); font-weight:600; text-decoration:none;">Sign In</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Pro Limit Upgrade / Razorpay Checkout -->
+  <div class="modal-overlay hidden" id="pro-limit-modal">
+    <div class="modal glass" style="max-width:420px; width:90%; padding:25px; text-align:center;">
+      <div style="font-size:50px; margin-bottom:15px;">🚀</div>
+      <h2 style="font-family:'Outfit',sans-serif; font-weight:800; font-size:22px; margin:0 0 10px 0; color:var(--text-main);">Daily Limit Reached!</h2>
+      <p class="subtitle" style="font-size:13px; line-height:1.6; margin-bottom:20px; color:var(--text-dark);">
+        You have hit the daily free limit of <strong>3 videos</strong>. 
+        Upgrade to <strong>Pro Mode</strong> now to unlock unlimited video generation, high-fidelity voices, and priority cloud rendering!
+      </p>
+      
+      <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:15px; border-radius:8px; margin-bottom:20px; text-align:left;">
+        <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:600; color:#10b981;">⚡ PRO FEATURES INCLUDED:</h4>
+        <ul style="margin:0; padding-left:18px; font-size:11px; color:var(--text-dark); display:flex; flex-direction:column; gap:4px; list-style-type:disc;">
+          <li>Unlimited video compilation and stitching</li>
+          <li>All aspect ratios (9:16, 16:9, 1:1, 4:5)</li>
+          <li>Premium hyper-realistic Edge voices</li>
+          <li>No watermarks & faster render speeds</li>
+        </ul>
+      </div>
+
+      <div class="modal-buttons" style="display:flex; flex-direction:column; gap:8px;">
+        <button id="btn-upgrade-gopro" class="btn btn-glow btn-lg" style="width:100%;">Upgrade to Pro (₹999/mo) 💳</button>
+        <button id="btn-pro-close" class="btn btn-secondary btn-sm" style="width:100%;">Maybe Later</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Razorpay Checkout Script -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
