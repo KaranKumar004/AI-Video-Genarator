@@ -15,6 +15,8 @@ const projectsListSidebar = document.getElementById('projects-list-sidebar');
 const btnNewProject = document.getElementById('btn-new-project');
 const projectSettingsSec = document.getElementById('project-settings-sec');
 const projectTitleInput = document.getElementById('project-title-input');
+const projectStyleSelect = document.getElementById('project-style-select');
+const projectCharacterInput = document.getElementById('project-character-input');
 const btnSaveProjectSettings = document.getElementById('btn-save-project-settings');
 
 const providerSelect = document.getElementById('provider-select');
@@ -87,6 +89,7 @@ const btnAiScriptTrigger = document.getElementById('btn-ai-script-trigger');
 const aiScriptModal = document.getElementById('ai-script-modal');
 const aiScriptTopicInput = document.getElementById('ai-script-topic');
 const aiScriptStyleSelect = document.getElementById('ai-script-style');
+const aiScriptCharacterInput = document.getElementById('ai-script-character');
 const aiScriptScenesSelect = document.getElementById('ai-script-scenes');
 const btnAiScriptCancel = document.getElementById('btn-ai-script-cancel');
 const btnAiScriptSubmit = document.getElementById('btn-ai-script-submit');
@@ -298,6 +301,8 @@ async function selectProject(id) {
     projectTitleInput.value = state.activeProject.title;
     scriptTextarea.value = state.activeProject.script || '';
     bgMusicInput.value = state.activeProject.bgMusic || '';
+    if (projectStyleSelect) projectStyleSelect.value = state.activeProject.style || 'Realistic Cinematic';
+    if (projectCharacterInput) projectCharacterInput.value = state.activeProject.characterDescription || '';
     
     const ratios = ['ratio-shorts', 'ratio-wide', 'ratio-square', 'ratio-portrait'];
     ratios.forEach(r => {
@@ -324,11 +329,13 @@ async function saveProjectSettings() {
   
   const title = projectTitleInput.value.trim();
   const aspectRatio = document.querySelector('input[name="aspect-ratio"]:checked').value;
+  const style = projectStyleSelect ? projectStyleSelect.value : 'Realistic Cinematic';
+  const characterDescription = projectCharacterInput ? projectCharacterInput.value.trim() : '';
   
   try {
     const res = await apiFetch(`${API_BASE}/projects/${state.activeProject.id}`, {
       method: 'PUT',
-      body: JSON.stringify({ title, aspectRatio })
+      body: JSON.stringify({ title, aspectRatio, style, characterDescription })
     });
     
     state.activeProject = await res.json();
@@ -416,12 +423,27 @@ async function parseScript() {
     return;
   }
 
+  saveKeysToLocalStorage();
+
+  const provider = providerSelect.value;
+  const falKey = falKeyInput.value.trim();
+  const replicateKey = replicateKeyInput.value.trim();
+  const style = projectStyleSelect ? projectStyleSelect.value : 'Realistic Cinematic';
+  const characterDescription = projectCharacterInput ? projectCharacterInput.value.trim() : '';
+
   logConsole('Parsing script into storyboard scenes...', 'info');
   
   try {
     const res = await apiFetch(`${API_BASE}/projects/${state.activeProject.id}/parse-script`, {
       method: 'POST',
-      body: JSON.stringify({ script })
+      body: JSON.stringify({
+        script,
+        style,
+        characterDescription,
+        provider,
+        falKey,
+        replicateKey
+      })
     });
     
     state.activeProject = await res.json();
@@ -448,7 +470,7 @@ async function updateSceneDetails(index, updatedScene) {
 
 // --- AI SCRIPT GENERATOR FLOW ---
 
-async function generateScriptAI(topic, style, sceneCount) {
+async function generateScriptAI(topic, style, sceneCount, characterDescription) {
   if (!state.activeProject) return;
 
   saveKeysToLocalStorage();
@@ -468,7 +490,8 @@ async function generateScriptAI(topic, style, sceneCount) {
         replicateKey,
         topic,
         style,
-        sceneCount
+        sceneCount,
+        characterDescription
       })
     });
 
@@ -477,6 +500,8 @@ async function generateScriptAI(topic, style, sceneCount) {
       state.activeProject = data.project;
       projectTitleInput.value = state.activeProject.title;
       scriptTextarea.value = state.activeProject.script || '';
+      if (projectStyleSelect) projectStyleSelect.value = state.activeProject.style || style || 'Realistic Cinematic';
+      if (projectCharacterInput) projectCharacterInput.value = state.activeProject.characterDescription || characterDescription || '';
       renderActiveProjectDetails();
       logConsole(`AI script and scenes generated successfully! Title: "${state.activeProject.title}"`, 'success');
     } else {
@@ -1058,6 +1083,7 @@ btnAiScriptSubmit.addEventListener('click', () => {
   const topic = aiScriptTopicInput.value.trim();
   const style = aiScriptStyleSelect.value;
   const count = aiScriptScenesSelect.value;
+  const characterDescription = aiScriptCharacterInput ? aiScriptCharacterInput.value.trim() : '';
 
   if (!topic) {
     alert('Please enter a script topic or idea');
@@ -1065,7 +1091,7 @@ btnAiScriptSubmit.addEventListener('click', () => {
   }
 
   aiScriptModal.classList.add('hidden');
-  generateScriptAI(topic, style, count);
+  generateScriptAI(topic, style, count, characterDescription);
 });
 
 // Template Quick Presets

@@ -65,6 +65,23 @@
             <label for="ratio-portrait" style="padding:6px; font-size:10px;">📕 FB (4:5)</label>
           </div>
         </div>
+        <div class="form-group" style="margin-top: 12px;">
+          <label for="project-style-select">Visual Style</label>
+          <select id="project-style-select" class="input-field">
+            <option value="Realistic Cinematic">Realistic Cinematic</option>
+            <option value="Anime Studio Ghibli">Anime Studio Ghibli</option>
+            <option value="Kawaii 2D Cartoon">Kawaii 2D Cartoon</option>
+            <option value="3D Pixar Style">3D Pixar Style</option>
+            <option value="Watercolor Painted">Watercolor Painted</option>
+            <option value="Comic Book Style">Comic Book Style</option>
+            <option value="Minimalist Glow Figure">Minimalist Glow Figure</option>
+            <option value="Vintage Retro">Vintage Retro</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-top: 12px;">
+          <label for="project-character-input">Character Description</label>
+          <textarea id="project-character-input" class="input-field" style="min-height: 50px; resize: vertical;" placeholder="e.g. Little boy with fluffy white cloud for a head, rosy cheeks, white sweater, grey jeans"></textarea>
+        </div>
         <div class="form-group" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 15px;">
           <label>Character Reference Image (Optional)</label>
           <div class="char-upload-box" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
@@ -305,13 +322,20 @@
       <div class="form-group" style="margin-top:12px;">
         <label for="ai-script-style">Visual Style Preset</label>
         <select id="ai-script-style" class="input-field">
-          <option value="Realistic">Realistic (Hunyuan Camera Footage)</option>
-          <option value="Cinematic" selected>Cinematic (Drama & Lighting)</option>
-          <option value="Anime">Anime (Japanese Hand-drawn)</option>
-          <option value="Cartoon">Cartoon (Flat Vector Illustration)</option>
-          <option value="3D Animation">3D Pixar Style (Soft Claymation)</option>
-          <option value="Kids Story">Kids Book Illustration (Whimsical)</option>
+          <option value="Realistic Cinematic" selected>Realistic Cinematic</option>
+          <option value="Anime Studio Ghibli">Anime Studio Ghibli</option>
+          <option value="Kawaii 2D Cartoon">Kawaii 2D Cartoon</option>
+          <option value="3D Pixar Style">3D Pixar Style</option>
+          <option value="Watercolor Painted">Watercolor Painted</option>
+          <option value="Comic Book Style">Comic Book Style</option>
+          <option value="Minimalist Glow Figure">Minimalist Glow Figure</option>
+          <option value="Vintage Retro">Vintage Retro</option>
         </select>
+      </div>
+
+      <div class="form-group" style="margin-top:12px;">
+        <label for="ai-script-character">Character Description (Optional)</label>
+        <textarea id="ai-script-character" class="input-field" style="min-height: 50px; resize: vertical;" placeholder="e.g. Little boy with fluffy white cloud for a head, rosy cheeks, white sweater, grey jeans"></textarea>
       </div>
       
       <div class="form-group" style="margin-top:12px;">

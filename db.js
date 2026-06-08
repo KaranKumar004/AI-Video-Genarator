@@ -258,6 +258,8 @@ const db = {
         scenes: data.scenes,
         compiledVideoUrl: data.compiled_video_url,
         thumbnailUrl: data.thumbnail_url,
+        style: data.style || 'Realistic Cinematic',
+        characterDescription: data.character_description || '',
         createdAt: data.created_at
       };
     } else {
@@ -349,6 +351,8 @@ const db = {
       if (updatedFields.scenes !== undefined) dbFields.scenes = updatedFields.scenes;
       if (updatedFields.compiledVideoUrl !== undefined) dbFields.compiled_video_url = updatedFields.compiledVideoUrl;
       if (updatedFields.thumbnailUrl !== undefined) dbFields.thumbnail_url = updatedFields.thumbnailUrl;
+      if (updatedFields.style !== undefined) dbFields.style = updatedFields.style;
+      if (updatedFields.characterDescription !== undefined) dbFields.character_description = updatedFields.characterDescription;
 
       const { data, error } = await supabase
         .from('projects')
@@ -373,6 +377,8 @@ const db = {
         scenes: data.scenes,
         compiledVideoUrl: data.compiled_video_url,
         thumbnailUrl: data.thumbnail_url,
+        style: data.style || 'Realistic Cinematic',
+        characterDescription: data.character_description || '',
         createdAt: data.created_at
       };
     } else {

@@ -394,19 +394,20 @@ app.delete('/api/projects/:id', authenticateToken, async (req, res) => {
 
 app.post('/api/projects/:id/parse-script', authenticateToken, async (req, res) => {
   const { id } = req.params;
+  const { script, style, characterDescription, provider, falKey, replicateKey } = req.body;
   
   try {
     const project = await db.getProject(id, req.userId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
 
-    const script = req.body.script || project.script;
-    if (!script.trim()) {
+    const scriptText = script || project.script;
+    if (!scriptText.trim()) {
       return res.status(400).json({ error: 'Script text is empty' });
     }
 
-    const lines = script.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    // Split script into sentences
+    const lines = scriptText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
     const sentences = [];
-    
     for (const line of lines) {
       const sentenceRegex = /[^.!?\s][^.!?]*(?:[.!?](?=\s|$)|(?=$))/g;
       const matches = line.match(sentenceRegex) || [line];
@@ -423,28 +424,188 @@ app.post('/api/projects/:id/parse-script', authenticateToken, async (req, res) =
       }
     }
 
-    const oldScenes = project.scenes || [];
-    const scenes = sentences.map((sentence, idx) => {
-      const match = oldScenes.find(o => o.text === sentence);
-      if (match) {
-        return { ...match, index: idx };
-      }
-      return {
-        index: idx,
-        text: sentence,
-        prompt: `Cinematic footage of ${sentence.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"")}, highly detailed, 4k, photorealistic`,
-        voiceUrl: '',
-        videoUrl: '',
-        duration: 0,
-        voiceoverStatus: 'pending',
-        videoStatus: 'pending'
-      };
-    });
+    if (sentences.length === 0) {
+      return res.status(400).json({ error: 'No valid sentences found in script' });
+    }
 
-    const updated = await db.updateProject(id, req.userId, { script, scenes });
+    let scenes = [];
+    const key = provider === 'fal' ? falKey : replicateKey;
+    const activeStyle = style || project.style || 'Realistic Cinematic';
+    const activeChar = characterDescription || project.characterDescription || '';
+
+    // Style description mappings
+    let styleDesc = '';
+    if (activeStyle === 'Realistic Cinematic') styleDesc = 'realistic cinematic style, photorealistic, dramatic lighting, shot on 35mm lens, highly detailed, cinematic colors, 8k resolution';
+    else if (activeStyle === 'Anime Studio Ghibli') styleDesc = 'anime studio ghibli style, hand-drawn illustration, retro anime aesthetic, detailed backgrounds, soft warm colors, nostalgic mood, painterly';
+    else if (activeStyle === 'Kawaii 2D Cartoon') styleDesc = 'kawaii 2D cartoon style, flat color vector illustration, cute, simple bold outlines, vibrant pastel color palette, minimalist design';
+    else if (activeStyle === '3D Pixar Style') styleDesc = '3D Pixar style, cute character design, smooth textures, soft claymation appearance, volumetric lighting, vibrant colors, disney character render';
+    else if (activeStyle === 'Watercolor Painted') styleDesc = 'watercolor painted art style, wet-on-wet paint effects, soft color washes, elegant brush strokes, ink splatters, artistic texture, dreamy aesthetic';
+    else if (activeStyle === 'Comic Book Style') styleDesc = 'comic book style, cel-shaded illustration, dot screen patterns, halftone texture, bold action lines, vintage pop art coloring, dynamic graphic style';
+    else if (activeStyle === 'Minimalist Glow Figure') styleDesc = 'minimalist glow line figure art, glowing neon outlines, dark clean background, sleek vector strokes, high contrast luminescent aesthetic';
+    else if (activeStyle === 'Vintage Retro') styleDesc = 'vintage retro style, 1970s warm color grade, analog film grain, faded colors, nostalgic vibe, classic film aesthetic, soft vintage filter';
+
+    if (key) {
+      console.log(`Calling AI LLM to interpret script sentences and generate video prompts. Style: ${activeStyle}`);
+      
+      let charPrompt = '';
+      if (activeChar.trim()) {
+        charPrompt = `The main character is described as: "${activeChar}". You must fully describe this character's appearance in detail for every scene prompt where they are present so that the AI generates a consistent character. Do not use words like "same" or "consistent". Describe them fully every time.`;
+      }
+
+      const promptText = `You are a professional storyboard director and AI video prompt engineer.
+We have a list of script sentences for a video.
+Your task is to take each sentence and write a highly descriptive visual prompt for a text-to-video model (like Hunyuan Video) that visually represents that sentence.
+
+Rules for Prompt Generation:
+- Never copy the script sentence directly into the prompt. Instead, interpret what is happening visually.
+- Describe the setting, background, character actions, camera angles/movements, and lighting.
+- The video style is: "${styleDesc}". Incorporate this style in each prompt.
+- ${charPrompt}
+- Keep each prompt detailed (30-60 words).
+
+Here are the sentences to parse:
+${sentences.map((s, idx) => `${idx + 1}. "${s}"`).join('\n')}
+
+Format the output strictly as a JSON object with this structure:
+{
+  "scenes": [
+    {
+      "text": "The exact script sentence from the input list",
+      "prompt": "The detailed visual prompt you generated"
+    },
+    ...
+  ]
+}
+Do not return any markdown wrappers, code blocks (like \`\`\`json), or notes. Return only raw JSON.`;
+
+      let llmResponseText = '';
+      if (provider === 'fal') {
+        const falRes = await fetch('https://queue.fal.run/fal-ai/any-llm', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Key ${falKey}`
+          },
+          body: JSON.stringify({
+            model: "google/gemini-flash-1.5",
+            prompt: promptText
+          })
+        });
+
+        if (falRes.ok) {
+          const falJson = await falRes.json();
+          llmResponseText = falJson.output || falJson.text;
+        } else {
+          console.error('Fal LLM call failed in parse-script:', await falRes.text());
+        }
+      } else {
+        const repRes = await fetch('https://api.replicate.com/v1/predictions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Token ${replicateKey}`
+          },
+          body: JSON.stringify({
+            version: "70bd49b2085706246f4849b57a7dd388f9f54b73b28b7e28b12204c5409ed566",
+            input: {
+              prompt: promptText,
+              max_new_tokens: 2000
+            }
+          })
+        });
+
+        if (repRes.ok) {
+          const prediction = await repRes.json();
+          const predictionId = prediction.id;
+          let completed = false;
+          let attempts = 0;
+          while (!completed && attempts < 30) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            attempts++;
+            const checkRes = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+              headers: { 'Authorization': `Token ${replicateKey}` }
+            });
+            if (checkRes.ok) {
+              const statusJson = await checkRes.json();
+              if (statusJson.status === 'succeeded') {
+                completed = true;
+                llmResponseText = Array.isArray(statusJson.output) ? statusJson.output.join('') : statusJson.output;
+              } else if (statusJson.status === 'failed') {
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      if (llmResponseText) {
+        try {
+          let jsonText = llmResponseText.trim();
+          if (jsonText.startsWith('```')) {
+            jsonText = jsonText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+          }
+          const parsed = JSON.parse(jsonText);
+          if (parsed.scenes && Array.isArray(parsed.scenes)) {
+            const oldScenes = project.scenes || [];
+            scenes = parsed.scenes.map((s, idx) => {
+              const match = oldScenes.find(o => o.text === s.text);
+              return {
+                index: idx,
+                text: s.text,
+                prompt: s.prompt,
+                voiceUrl: match ? match.voiceUrl : '',
+                videoUrl: match ? match.videoUrl : '',
+                duration: match ? match.duration : 0,
+                voiceoverStatus: match ? match.voiceoverStatus : 'pending',
+                videoStatus: match ? match.videoStatus : 'pending'
+              };
+            });
+          }
+        } catch (parseErr) {
+          console.error('Failed to parse LLM storyboard output. Falling back to local generation.', parseErr);
+        }
+      }
+    }
+
+    // Fallback if LLM was not used or failed
+    if (scenes.length === 0) {
+      console.log('Using local string replacement fallback for storyboard prompt generation...');
+      const oldScenes = project.scenes || [];
+      scenes = sentences.map((sentence, idx) => {
+        const match = oldScenes.find(o => o.text === sentence);
+        if (match) {
+          return { ...match, index: idx };
+        }
+        
+        let localPrompt = '';
+        if (activeChar.trim()) {
+          localPrompt = `${styleDesc}, showing ${activeChar}. ${sentence.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"")}`;
+        } else {
+          localPrompt = `${styleDesc}, showing ${sentence.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"")}`;
+        }
+
+        return {
+          index: idx,
+          text: sentence,
+          prompt: localPrompt,
+          voiceUrl: '',
+          videoUrl: '',
+          duration: 0,
+          voiceoverStatus: 'pending',
+          videoStatus: 'pending'
+        };
+      });
+    }
+
+    const updated = await db.updateProject(id, req.userId, { 
+      script: scriptText, 
+      scenes, 
+      style: activeStyle, 
+      characterDescription: activeChar 
+    });
     res.json(updated);
   } catch (e) {
-    console.error(e);
+    console.error('Parse script error:', e);
     res.status(500).json({ error: 'Failed to parse script' });
   }
 });
@@ -1349,7 +1510,7 @@ app.post('/api/projects/:id/generate-thumbnail', authenticateToken, async (req, 
 // --- AI SCRIPT GENERATOR ---
 app.post('/api/projects/:id/generate-script-ai', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { provider, falKey, replicateKey, topic, style, sceneCount } = req.body;
+  const { provider, falKey, replicateKey, topic, style, sceneCount, characterDescription } = req.body;
 
   try {
     const project = await db.getProject(id, req.userId);
@@ -1360,13 +1521,21 @@ app.post('/api/projects/:id/generate-script-ai', authenticateToken, async (req, 
 
     const scenesNum = parseInt(sceneCount) || 5;
 
+    // Style description mappings
     let styleDesc = '';
-    if (style === 'Cinematic') styleDesc = 'cinematic style, dramatic lighting, highly detailed, 4k';
-    else if (style === 'Anime') styleDesc = 'anime illustration, hand-drawn style, vibrant colors, studio ghibli aesthetic';
-    else if (style === 'Cartoon') styleDesc = '2d cartoon style, colorful, clean vectors, flat illustration';
-    else if (style === '3D Animation') styleDesc = '3d animation style, pixar / disney style, claymation, soft lighting';
-    else if (style === 'Kids Story') styleDesc = 'storybook style illustration, friendly, child-friendly bright colors, whimsical';
-    else if (style === 'Realistic') styleDesc = 'photorealistic style, raw photo, highly detailed, real life camera footage';
+    if (style === 'Realistic Cinematic') styleDesc = 'realistic cinematic style, photorealistic, dramatic lighting, shot on 35mm lens, highly detailed, cinematic colors, 8k resolution';
+    else if (style === 'Anime Studio Ghibli') styleDesc = 'anime studio ghibli style, hand-drawn illustration, retro anime aesthetic, detailed backgrounds, soft warm colors, nostalgic mood, painterly';
+    else if (style === 'Kawaii 2D Cartoon') styleDesc = 'kawaii 2D cartoon style, flat color vector illustration, cute, simple bold outlines, vibrant pastel color palette, minimalist design';
+    else if (style === '3D Pixar Style') styleDesc = '3D Pixar style, cute character design, smooth textures, soft claymation appearance, volumetric lighting, vibrant colors, disney character render';
+    else if (style === 'Watercolor Painted') styleDesc = 'watercolor painted art style, wet-on-wet paint effects, soft color washes, elegant brush strokes, ink splatters, artistic texture, dreamy aesthetic';
+    else if (style === 'Comic Book Style') styleDesc = 'comic book style, cel-shaded illustration, dot screen patterns, halftone texture, bold action lines, vintage pop art coloring, dynamic graphic style';
+    else if (style === 'Minimalist Glow Figure') styleDesc = 'minimalist glow line figure art, glowing neon outlines, dark clean background, sleek vector strokes, high contrast luminescent aesthetic';
+    else if (style === 'Vintage Retro') styleDesc = 'vintage retro style, 1970s warm color grade, analog film grain, faded colors, nostalgic vibe, classic film aesthetic, soft vintage filter';
+
+    let charPrompt = '';
+    if (characterDescription && characterDescription.trim()) {
+      charPrompt = `The main character is described as: "${characterDescription}". You must fully describe this character's appearance in detail for every scene prompt where they are present so that the AI generates a consistent character. Do not use words like "same" or "consistent". Describe them fully every time.`;
+    }
 
     // Construct prompt
     let promptText = `Write a script and video prompts for a video about "${topic}". The style is "${style}".
@@ -1374,6 +1543,8 @@ Generate a title and break down the script into exactly ${scenesNum} sequential 
 Each scene must have:
 1. "text": Narration script for the voiceover to read (make it engaging and fit the overall narrative).
 2. "prompt": A highly descriptive visual prompt to feed into an AI video generator (like Hunyuan Video) to generate a 2-4 second video matching the narration. Include style cues like: "${styleDesc}".
+${charPrompt ? `3. ${charPrompt}\n` : ''}
+The prompts should visually interpret the narration rather than copying it directly. Keep the visual prompts detailed and rich.
 
 Format the response strictly as a single JSON object with the following structure:
 {
@@ -1420,7 +1591,7 @@ Do not include any other text, markdown blocks like \`\`\`json, headers or notes
           'Authorization': `Token ${replicateKey}`
         },
         body: JSON.stringify({
-          version: "70bd49b2085706246f4849b57a7dd388f9f54b73b28b7e28b12204c5409ed566", // Llama 3 8B Instruct Default
+          version: "70bd49b2085706246f4849b57a7dd388f9f54b73b28b7e28b12204c5409ed566",
           input: {
             prompt: promptText,
             max_new_tokens: 1500
@@ -1487,7 +1658,9 @@ Do not include any other text, markdown blocks like \`\`\`json, headers or notes
     const updatedProject = await db.updateProject(id, req.userId, {
       title: parsed.title || project.title,
       script: fullScript,
-      scenes
+      scenes,
+      style,
+      characterDescription
     });
 
     res.json({ success: true, project: updatedProject });
