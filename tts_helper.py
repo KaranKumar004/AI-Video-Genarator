@@ -9,9 +9,9 @@ async def list_voices():
         voices = await edge_tts.VoicesManager.create()
         filtered_voices = []
         for voice in voices.voices:
-            # Filter for English, Hindi, Kannada, and Tamil locales
+            # Filter for English, Hindi, Kannada, Tamil, Telugu, Bengali, Malayalam, Marathi, Gujarati, Spanish, and French locales
             locale_lower = voice["Locale"].lower()
-            if any(lang in locale_lower for lang in ["en-", "hi-", "kn-", "ta-"]):
+            if any(lang in locale_lower for lang in ["en-", "hi-", "kn-", "ta-", "te-", "bn-", "ml-", "mr-", "gu-", "es-", "fr-"]):
                 filtered_voices.append({
                     "Name": voice["Name"],
                     "ShortName": voice["ShortName"],

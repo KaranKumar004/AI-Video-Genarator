@@ -558,6 +558,7 @@ Do not return any markdown wrappers, code blocks (like \`\`\`json), or notes. Re
               return {
                 index: idx,
                 text: s.text,
+                originalText: s.text,
                 prompt: s.prompt,
                 voiceUrl: match ? match.voiceUrl : '',
                 videoUrl: match ? match.videoUrl : '',
@@ -593,6 +594,7 @@ Do not return any markdown wrappers, code blocks (like \`\`\`json), or notes. Re
         return {
           index: idx,
           text: sentence,
+          originalText: sentence,
           prompt: localPrompt,
           voiceUrl: '',
           videoUrl: '',
@@ -1197,7 +1199,27 @@ async function runBackgroundCompile(id, userId, bgMusic, bgVolume, burnCaptions)
         exec(compileSceneCmd, (error, stdout, stderr) => {
           if (error) {
             console.error(`FFmpeg Scene ${idx} error:`, stderr);
-            reject(new Error(`Failed to compile scene ${idx}: ${stderr}`));
+            
+            // Fallback: If drawtext is unsupported, retry without subtitles!
+            const hasDrawtextError = stderr.includes("No such filter: 'drawtext'") || 
+                                    stderr.includes("drawtext") || 
+                                    stderr.includes("Filter not found");
+                                    
+            if (burnCaptions && hasDrawtextError) {
+              console.warn(`[FFmpeg Warning] drawtext filter not supported by this FFmpeg build. Retrying compile without subtitles...`);
+              const fallbackScaleFilter = `[0:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}[v]`;
+              const fallbackCmd = `"${ffmpegPath}" -y -stream_loop -1 -i "${videoPath}" -i "${audioPath}" -filter_complex "${fallbackScaleFilter}" -map "[v]" -map 1:a -c:v libx264 -preset superfast -c:a aac -shortest -pix_fmt yuv420p -r 30 "${sceneCombinedPath}"`;
+              
+              exec(fallbackCmd, (fbError, fbStdout, fbStderr) => {
+                if (fbError) {
+                  reject(new Error(`Failed to compile scene ${idx} in fallback mode: ${fbStderr}`));
+                } else {
+                  resolve();
+                }
+              });
+            } else {
+              reject(new Error(`Failed to compile scene ${idx}: ${stderr}`));
+            }
           } else {
             resolve();
           }
@@ -1651,6 +1673,7 @@ Do not include any other text, markdown blocks like \`\`\`json, headers or notes
     const scenes = parsed.scenes.map((s, idx) => ({
       index: idx,
       text: s.text,
+      originalText: s.text,
       prompt: s.prompt,
       voiceUrl: '',
       videoUrl: '',
@@ -1674,6 +1697,127 @@ Do not include any other text, markdown blocks like \`\`\`json, headers or notes
   } catch (e) {
     console.error('AI script generation failed:', e);
     res.status(500).json({ error: 'AI script generation failed', details: e.message });
+  }
+});
+
+// --- TRANSLATION HELPER & ENDPOINT ---
+
+async function translateText(text, targetLangCode) {
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLangCode}&dt=t&q=${encodeURIComponent(text)}`;
+  
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Translation service returned status ${response.status}`);
+  }
+  const data = await response.json();
+  if (data && data[0]) {
+    return data[0].map(segment => segment[0]).join('');
+  }
+  throw new Error('Invalid translation response');
+}
+
+app.post('/api/projects/:id/translate-voiceovers', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { voice } = req.body;
+  
+  try {
+    const project = await db.getProject(id, req.userId);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    
+    const selectedVoice = voice || 'en-US-GuyNeural';
+    const langCode = selectedVoice.split('-')[0].toLowerCase();
+    
+    console.log(`[Translate Voiceovers] Project: ${id}, Target Voice: ${selectedVoice}, Language: ${langCode}`);
+    
+    const projectDir = path.join(PROJECTS_DIR, id);
+    const assetsDir = path.join(projectDir, 'assets');
+    if (!fs.existsSync(assetsDir)) {
+      fs.mkdirSync(assetsDir, { recursive: true });
+    }
+    
+    const updatedScenes = [];
+    
+    for (let idx = 0; idx < project.scenes.length; idx++) {
+      const scene = project.scenes[idx];
+      
+      // Initialize originalText if missing
+      if (!scene.originalText) {
+        scene.originalText = scene.text;
+      }
+      
+      const sourceText = scene.originalText;
+      let translatedText = sourceText;
+      
+      if (langCode !== 'en') {
+        try {
+          console.log(`Translating scene ${idx} to ${langCode}: "${sourceText}"`);
+          translatedText = await translateText(sourceText, langCode);
+          console.log(`Translated scene ${idx}: "${translatedText}"`);
+        } catch (transErr) {
+          console.error(`Translation failed for scene ${idx}, using original text.`, transErr);
+        }
+      } else {
+        translatedText = sourceText;
+      }
+      
+      const outputFilename = `scene_${idx}_audio.mp3`;
+      const outputPath = path.join(assetsDir, outputFilename);
+      
+      console.log(`Generating translated voice for Scene ${idx} using ${selectedVoice}...`);
+      
+      const success = await new Promise((resolve) => {
+        const pythonCmd = 'python';
+        const args = [
+          path.join(__dirname, 'tts_helper.py'),
+          '--text', translatedText,
+          '--voice', selectedVoice,
+          '--output', outputPath
+        ];
+        
+        const child = spawn(pythonCmd, args);
+        let stderrData = '';
+        child.stderr.on('data', (d) => { stderrData += d.toString(); });
+        
+        child.on('close', (code) => {
+          if (code !== 0) {
+            console.error(`TTS process exited with code ${code}. Error: ${stderrData}`);
+            resolve(false);
+          } else {
+            resolve(true);
+          }
+        });
+      });
+      
+      if (success) {
+        const duration = await new Promise((resolve) => {
+          const ffprobeCmd = `"${ffprobePath}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${outputPath}"`;
+          exec(ffprobeCmd, (ffError, ffStdout) => {
+            if (ffError) {
+              resolve(3.0);
+            } else {
+              resolve(parseFloat(ffStdout.trim()) || 3.0);
+            }
+          });
+        });
+        
+        scene.text = translatedText;
+        scene.voiceUrl = `/projects/${id}/assets/${outputFilename}?t=${Date.now()}`;
+        scene.duration = duration;
+        scene.voiceoverStatus = 'completed';
+      } else {
+        scene.text = translatedText;
+        scene.voiceoverStatus = 'failed';
+      }
+      
+      updatedScenes.push(scene);
+    }
+    
+    const updatedProject = await db.updateProject(id, req.userId, { scenes: updatedScenes });
+    res.json({ success: true, project: updatedProject });
+    
+  } catch (e) {
+    console.error('[Translate Voiceovers Error]:', e);
+    res.status(500).json({ error: 'Failed to translate and regenerate voiceovers', details: e.message });
   }
 });
 

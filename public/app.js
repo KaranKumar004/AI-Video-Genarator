@@ -31,6 +31,7 @@ const replicateKeyInput = document.getElementById('replicate-key-input');
 const replicateModelInput = document.getElementById('replicate-model-input');
 
 const voiceSelect = document.getElementById('voice-select');
+const btnTranslateVoiceovers = document.getElementById('btn-translate-voiceovers');
 const bgMusicInput = document.getElementById('bg-music-input');
 const bgVolumeInput = document.getElementById('bg-volume-input');
 
@@ -465,6 +466,50 @@ async function updateSceneDetails(index, updatedScene) {
     });
   } catch (e) {
     console.error('Failed to sync scene edits to server:', e);
+  }
+}
+
+async function translateVoiceovers() {
+  if (!state.activeProject) return;
+  if (!confirm('Are you sure you want to translate the script and regenerate all scene audios? Your video clips will remain unchanged, but the voiceovers and subtitles will be updated.')) {
+    return;
+  }
+  
+  const voice = voiceSelect.value;
+  logConsole(`Starting script translation & voiceover regeneration using ${voice}...`, 'info');
+  
+  if (btnTranslateVoiceovers) {
+    btnTranslateVoiceovers.disabled = true;
+    btnTranslateVoiceovers.innerText = '⏳ Translating...';
+  }
+  
+  try {
+    const res = await apiFetch(`${API_BASE}/projects/${state.activeProject.id}/translate-voiceovers`, {
+      method: 'POST',
+      body: JSON.stringify({ voice })
+    });
+    
+    const data = await res.json();
+    if (data.success) {
+      state.activeProject = data.project;
+      
+      // Update script editor and storyboard list
+      scriptTextarea.value = state.activeProject.script || '';
+      renderActiveProjectDetails();
+      
+      logConsole('All scenes translated and voiceovers successfully regenerated!', 'success');
+      alert('Narration successfully translated and voiceovers regenerated! You can now compile the final video.');
+    } else {
+      throw new Error(data.error || 'Failed to translate narration');
+    }
+  } catch (err) {
+    logConsole(`Narration translation failed: ${err.message}`, 'error');
+    alert(`Translation failed: ${err.message}`);
+  } finally {
+    if (btnTranslateVoiceovers) {
+      btnTranslateVoiceovers.disabled = false;
+      btnTranslateVoiceovers.innerText = '🔄 Translate & Regenerate Audio';
+    }
   }
 }
 
@@ -1118,6 +1163,9 @@ document.querySelectorAll('.btn-template').forEach(btn => {
 // Compile & Thumbnail events
 btnCompileVideo.addEventListener('click', compileVideo);
 btnGenerateThumbnail.addEventListener('click', generateThumbnail);
+if (btnTranslateVoiceovers) {
+  btnTranslateVoiceovers.addEventListener('click', translateVoiceovers);
+}
 
 // Downloads
 btnDownloadVideo.addEventListener('click', () => {
