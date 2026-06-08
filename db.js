@@ -37,6 +37,7 @@ CREATE TABLE users (
   id TEXT PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
+  is_pro BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -50,6 +51,8 @@ CREATE TABLE projects (
   scenes JSONB DEFAULT '[]'::jsonb,
   compiled_video_url TEXT DEFAULT '',
   thumbnail_url TEXT DEFAULT '',
+  style TEXT DEFAULT 'Realistic Cinematic',
+  character_description TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -115,7 +118,10 @@ const db = {
         .select()
         .single();
       
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error('[db.createUser] Supabase insert error:', error);
+        throw new Error(error.message);
+      }
       return data;
     } else {
       const users = getLocalUsers();
@@ -137,7 +143,10 @@ const db = {
         .eq('email', email)
         .maybeSingle();
       
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error('[db.getUserByEmail] Supabase query error:', error);
+        throw new Error(error.message);
+      }
       if (!data) return null;
       return {
         id: data.id,
@@ -161,7 +170,10 @@ const db = {
         .eq('id', id)
         .maybeSingle();
       
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error('[db.getUserById] Supabase query error:', error);
+        throw new Error(error.message);
+      }
       if (!data) return null;
       return {
         id: data.id,

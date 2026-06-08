@@ -209,7 +209,7 @@ async function handleLogin() {
       localStorage.setItem('token', data.token);
       checkAuth();
     } else {
-      alert(data.error || 'Login failed');
+      alert((data.error || 'Login failed') + (data.details ? ': ' + data.details : ''));
     }
   } catch (err) {
     alert('Network error, please try again.');
@@ -240,7 +240,7 @@ async function handleSignup() {
       localStorage.setItem('token', data.token);
       checkAuth();
     } else {
-      alert(data.error || 'Sign up failed');
+      alert((data.error || 'Sign up failed') + (data.details ? ': ' + data.details : ''));
     }
   } catch (err) {
     alert('Network error during signup.');
