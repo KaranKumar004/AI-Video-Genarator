@@ -10,6 +10,7 @@ const ffmpegPath = require('ffmpeg-static');
 const ffprobe = require('@ffprobe-installer/ffprobe');
 const ffprobePath = ffprobe.path;
 const db = require('./db');
+const { sendWelcomeEmail } = require('./email_helper');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -144,6 +145,11 @@ app.post('/api/auth/signup', async (req, res) => {
 
     const user = await db.createUser(email, passwordHash);
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+
+    // Send welcome email asynchronously
+    sendWelcomeEmail(user.email).catch(err => {
+      console.error('[Email] Failed to send welcome email in background:', err);
+    });
 
     res.json({
       success: true,
