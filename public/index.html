@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ToonHub - Premium AI Video Studio & Character Figurines</title>
+  <title>AI Video Studio - Instant Script to Viral Videos</title>
   <!-- Google Fonts: Anton & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -61,22 +61,22 @@
 
     <!-- 2. Giant ghost text -->
     <div class="absolute inset-x-0 top-[18%] flex items-center justify-center pointer-events-none select-none z-[2]">
-      <h1 class="font-anton text-white text-[90px] sm:text-[14vw] md:text-[18vw] lg:text-[20vw] opacity-100 font-black leading-none uppercase tracking-[-0.02em] whitespace-nowrap">
-        3D SHAPE
+      <h1 id="ghost-text" class="font-anton text-white text-[90px] sm:text-[14vw] md:text-[18vw] lg:text-[20vw] opacity-100 font-black leading-none uppercase tracking-[-0.02em] whitespace-nowrap">
+        ANIME AI
       </h1>
     </div>
 
     <!-- 3. Top-left brand label -->
     <div class="absolute top-6 left-4 sm:left-8 z-[60]">
       <a href="/app.html" class="text-xs font-semibold uppercase text-white opacity-90 tracking-[0.18em] hover:opacity-100 transition-opacity">
-        TOONHUB AI
+        VIDEOSTUDIO.AI
       </a>
     </div>
     
     <!-- Top-right Launch App button -->
     <div class="absolute top-6 right-4 sm:right-8 z-[60]">
       <a href="/app.html" class="px-5 py-2 border-2 border-white rounded-full text-xs font-semibold uppercase text-white hover:bg-white hover:text-black transition-all duration-200">
-        Launch Studio
+        Create Video
       </a>
     </div>
 
@@ -87,11 +87,11 @@
 
     <!-- 5. Bottom-left text + navigation buttons -->
     <div class="absolute bottom-6 left-4 sm:bottom-20 sm:left-24 z-[60] max-w-[320px]">
-      <p class="font-bold uppercase tracking-[0.02em] text-white opacity-95 text-base sm:text-[22px] mb-2 sm:mb-3">
-        TOONHUB FIGURINES
+      <p id="style-title" class="font-bold uppercase tracking-[0.02em] text-white opacity-95 text-base sm:text-[22px] mb-2 sm:mb-3">
+        Anime Magic Style
       </p>
-      <p class="hidden sm:block text-xs sm:text-sm text-white opacity-85 leading-[1.6] mb-4 sm:mb-5">
-        The artwork is stunning, shipped fully prepared. The finish is a vision, the 3D craft is flawless. Many thanks! Wishing you the win. Order now.
+      <p id="style-desc" class="hidden sm:block text-xs sm:text-sm text-white opacity-85 leading-[1.6] mb-4 sm:mb-5">
+        Vibrant, hand-drawn Japanese animation style. Perfect for storybooks, cinematic anime clips, and viral fantasy stories.
       </p>
       <div class="flex gap-3">
         <!-- Prev Button -->
@@ -105,10 +105,10 @@
       </div>
     </div>
 
-    <!-- 6. Bottom-right link "DISCOVER IT" -->
+    <!-- 6. Bottom-right link "CREATE NOW" -->
     <div class="absolute bottom-6 right-4 sm:bottom-20 sm:right-10 z-[60]">
       <a href="/app.html" class="flex items-center gap-2 sm:gap-4 font-anton text-white opacity-95 hover:opacity-100 transition-opacity duration-200 uppercase tracking-[-0.02em] leading-none no-underline text-[20px] sm:text-[4vw] md:text-[5vw] lg:text-[56px]">
-        <span>DISCOVER IT</span>
+        <span>CREATE NOW</span>
         <i data-lucide="arrow-right" class="w-5 h-5 sm:w-8 sm:h-8" style="stroke-width: 2.25;"></i>
       </a>
     </div>
@@ -116,12 +116,40 @@
   </div>
 
   <script>
-    // Image details
+    // Image details mapped to AI Video styles
     const IMAGES = [
-      { src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/1.02464a56.png', bg: '#F4845F', panel: '#F79B7F' },
-      { src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/2.b977faab.png', bg: '#6BBF7A', panel: '#85CC92' },
-      { src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/3.4df853b4.png', bg: '#E882B4', panel: '#ED9DC4' },
-      { src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/4.4457fbce.png', bg: '#6EB5FF', panel: '#8DC4FF' },
+      { 
+        src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/1.02464a56.png', 
+        bg: '#F4845F', 
+        panel: '#F79B7F',
+        ghostText: 'ANIME AI',
+        title: 'Anime Magic Style',
+        desc: 'Vibrant, hand-drawn Japanese animation style. Perfect for fantasy web series, character storyboards, and immersive viral videos.'
+      },
+      { 
+        src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/2.b977faab.png', 
+        bg: '#6BBF7A', 
+        panel: '#85CC92',
+        ghostText: '3D TOON',
+        title: '3D Pixar Animation',
+        desc: 'Soft, claymation-style character designs. Perfect for kids storytelling, educational explainer clips, and friendly tutorial animations.'
+      },
+      { 
+        src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/3.4df853b4.png', 
+        bg: '#E882B4', 
+        panel: '#ED9DC4',
+        ghostText: 'CARTOON',
+        title: 'Cartoon Storybook',
+        desc: 'Flat, colorful vector art styles. Excellent for historical breakdowns, fun facts, and infographics tailored for Instagram and TikTok.'
+      },
+      { 
+        src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/4.4457fbce.png', 
+        bg: '#6EB5FF', 
+        panel: '#8DC4FF',
+        ghostText: 'CINEMATIC',
+        title: 'Cinematic Realism',
+        desc: 'Stunning photorealistic lighting and depth. Tailored for motivational speeches, high-converting product ads, and dramatic film hooks.'
+      },
     ];
 
     let activeIndex = 0;
@@ -138,6 +166,9 @@
     const bgContainer = document.getElementById('bg-container');
     const btnPrev = document.getElementById('btn-prev');
     const btnNext = document.getElementById('btn-next');
+    const styleTitle = document.getElementById('style-title');
+    const styleDesc = document.getElementById('style-desc');
+    const ghostText = document.getElementById('ghost-text');
 
     // Create carousel elements
     IMAGES.forEach((img, index) => {
@@ -158,6 +189,11 @@
     function updateCarousel() {
       // Background color transition
       bgContainer.style.backgroundColor = IMAGES[activeIndex].bg;
+
+      // Update text details dynamically
+      styleTitle.innerText = IMAGES[activeIndex].title;
+      styleDesc.innerText = IMAGES[activeIndex].desc;
+      ghostText.innerText = IMAGES[activeIndex].ghostText;
 
       // Roles mapping
       const centerIdx = activeIndex;
