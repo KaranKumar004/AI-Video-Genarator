@@ -32,6 +32,9 @@ if (!fs.existsSync(PROJECTS_DIR)) {
 // Global compile jobs mapping
 const compileJobs = {};
 
+// Global translation jobs mapping
+const translationJobs = {};
+
 // Helper to download files
 async function downloadFile(url, destPath) {
   const file = fs.createWriteStream(destPath);
@@ -1727,7 +1730,36 @@ app.post('/api/projects/:id/translate-voiceovers', authenticateToken, async (req
     const selectedVoice = voice || 'en-US-GuyNeural';
     const langCode = selectedVoice.split('-')[0].toLowerCase();
     
-    console.log(`[Translate Voiceovers] Project: ${id}, Target Voice: ${selectedVoice}, Language: ${langCode}`);
+    if (translationJobs[id] && translationJobs[id].status === 'translating') {
+      return res.status(400).json({ error: 'Translation is already in progress for this project' });
+    }
+    
+    translationJobs[id] = {
+      status: 'translating',
+      currentStep: 'Initializing...',
+      totalScenes: project.scenes ? project.scenes.length : 0,
+      error: null
+    };
+    
+    console.log(`[Translate Voiceovers] Initiating async translation. Project: ${id}, Voice: ${selectedVoice}, Lang: ${langCode}`);
+    
+    // Start background translation
+    runBackgroundTranslation(id, req.userId, selectedVoice, langCode);
+    
+    res.json({ success: true, status: 'translating' });
+    
+  } catch (e) {
+    console.error('[Translate Voiceovers Init Error]:', e);
+    res.status(500).json({ error: 'Failed to initiate translation and voiceover regeneration' });
+  }
+});
+
+async function runBackgroundTranslation(id, userId, selectedVoice, langCode) {
+  try {
+    const project = await db.getProject(id, userId);
+    if (!project) {
+      throw new Error('Project not found');
+    }
     
     const projectDir = path.join(PROJECTS_DIR, id);
     const assetsDir = path.join(projectDir, 'assets');
@@ -1736,9 +1768,14 @@ app.post('/api/projects/:id/translate-voiceovers', authenticateToken, async (req
     }
     
     const updatedScenes = [];
+    const scenesLength = project.scenes.length;
     
-    for (let idx = 0; idx < project.scenes.length; idx++) {
+    for (let idx = 0; idx < scenesLength; idx++) {
       const scene = project.scenes[idx];
+      
+      // Update progress
+      translationJobs[id].currentStep = `Translating scene ${idx + 1}/${scenesLength}`;
+      console.log(`[Translate Voiceovers] Project ${id}: Translating scene ${idx} to ${langCode}: "${scene.text}"`);
       
       // Initialize originalText if missing
       if (!scene.originalText) {
@@ -1812,12 +1849,41 @@ app.post('/api/projects/:id/translate-voiceovers', authenticateToken, async (req
       updatedScenes.push(scene);
     }
     
-    const updatedProject = await db.updateProject(id, req.userId, { scenes: updatedScenes });
-    res.json({ success: true, project: updatedProject });
+    console.log(`[Translate Voiceovers] Saving updated project in database for project ${id}...`);
+    const updatedProject = await db.updateProject(id, userId, { scenes: updatedScenes });
+    
+    // Update local jobs memory with the latest project data
+    translationJobs[id].status = 'completed';
+    translationJobs[id].currentStep = 'Completed';
+    console.log(`[Translate Voiceovers] Project ${id} translation completed successfully.`);
     
   } catch (e) {
-    console.error('[Translate Voiceovers Error]:', e);
-    res.status(500).json({ error: 'Failed to translate and regenerate voiceovers', details: e.message });
+    console.error('[Translate Voiceovers Background Error]:', e);
+    if (translationJobs[id]) {
+      translationJobs[id].status = 'failed';
+      translationJobs[id].currentStep = 'Failed';
+      translationJobs[id].error = e.message;
+    }
+  }
+}
+
+app.get('/api/projects/:id/translate-status', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const job = translationJobs[id];
+  if (job) {
+    res.json({
+      success: true,
+      status: job.status,
+      currentStep: job.currentStep,
+      error: job.error
+    });
+  } else {
+    res.json({
+      success: true,
+      status: 'idle',
+      currentStep: 'Idle',
+      error: null
+    });
   }
 });
 

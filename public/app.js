@@ -480,7 +480,7 @@ async function translateVoiceovers() {
   
   if (btnTranslateVoiceovers) {
     btnTranslateVoiceovers.disabled = true;
-    btnTranslateVoiceovers.innerText = '⏳ Translating...';
+    btnTranslateVoiceovers.innerText = '⏳ Initiating...';
   }
   
   try {
@@ -490,26 +490,76 @@ async function translateVoiceovers() {
     });
     
     const data = await res.json();
-    if (data.success) {
-      state.activeProject = data.project;
-      
-      // Update script editor and storyboard list
-      scriptTextarea.value = state.activeProject.script || '';
-      renderActiveProjectDetails();
-      
-      logConsole('All scenes translated and voiceovers successfully regenerated!', 'success');
-      alert('Narration successfully translated and voiceovers regenerated! You can now compile the final video.');
-    } else {
-      throw new Error(data.error || 'Failed to translate narration');
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to start translation');
     }
+    
+    logConsole('Translation request initiated. Polling background progress...', 'info');
+    pollTranslationStatus(state.activeProject.id);
+    
   } catch (err) {
-    logConsole(`Narration translation failed: ${err.message}`, 'error');
+    logConsole(`Narration translation initialization failed: ${err.message}`, 'error');
     alert(`Translation failed: ${err.message}`);
-  } finally {
-    if (btnTranslateVoiceovers) {
-      btnTranslateVoiceovers.disabled = false;
-      btnTranslateVoiceovers.innerText = '🔄 Translate & Regenerate Audio';
+    resetTranslateButton();
+  }
+}
+
+function pollTranslationStatus(projectId) {
+  const interval = setInterval(async () => {
+    try {
+      const res = await apiFetch(`${API_BASE}/projects/${projectId}/translate-status`);
+      const data = await res.json();
+      
+      if (!data.success) {
+        clearInterval(interval);
+        logConsole(`Translation polling failed: ${data.error}`, 'error');
+        alert(`Translation failed: ${data.error}`);
+        resetTranslateButton();
+        return;
+      }
+      
+      if (data.status === 'translating') {
+        if (btnTranslateVoiceovers) {
+          btnTranslateVoiceovers.innerText = `⏳ Translating (${data.currentStep || 'processing'})...`;
+        }
+        logConsole(`Translation progress: ${data.currentStep}`, 'info');
+      } else if (data.status === 'completed') {
+        clearInterval(interval);
+        logConsole('All scenes translated and voiceovers successfully regenerated!', 'success');
+        
+        // Fetch updated project details to sync UI
+        const pRes = await apiFetch(`${API_BASE}/projects/${projectId}`);
+        const pData = await pRes.json();
+        if (pData.success) {
+          state.activeProject = pData.project;
+          scriptTextarea.value = state.activeProject.script || '';
+          renderActiveProjectDetails();
+        }
+        
+        alert('Narration successfully translated and voiceovers regenerated! You can now compile the final video.');
+        resetTranslateButton();
+      } else if (data.status === 'failed') {
+        clearInterval(interval);
+        logConsole(`Translation failed: ${data.error}`, 'error');
+        alert(`Translation failed: ${data.error || 'Unknown translation error'}`);
+        resetTranslateButton();
+      } else {
+        clearInterval(interval);
+        resetTranslateButton();
+      }
+    } catch (err) {
+      clearInterval(interval);
+      logConsole(`Error polling translation status: ${err.message}`, 'error');
+      alert(`Error polling translation status: ${err.message}`);
+      resetTranslateButton();
     }
+  }, 1500);
+}
+
+function resetTranslateButton() {
+  if (btnTranslateVoiceovers) {
+    btnTranslateVoiceovers.disabled = false;
+    btnTranslateVoiceovers.innerText = '🔄 Translate & Regenerate Audio';
   }
 }
 
